@@ -1,13 +1,4 @@
-// import HeroSection from "@/app/components/home/HeroSection";
-
-// import Link from "next/link";
-// import NewArrivals from "./components/NewArrivals/NewArrivals";
-
-// export default function Homepage() {
-//   return (
-//     <main>
-//       <HeroSection />
-//       <NewArrivals />
-//     </main>
-//   );
-// }
+// app/page.jsx  (create if missing)
+export default function Home() {
+  return <h1>Roshara is live</h1>;
+}
