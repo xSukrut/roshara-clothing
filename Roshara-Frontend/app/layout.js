@@ -1,3 +1,6 @@
+// app/layout.jsx
+"use client";
+
 import "./globals.css";
 import { AuthProvider } from "../context/AuthContext";
 import { CartProvider } from "../context/CartContext";
@@ -18,13 +21,9 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           <WishlistProvider>
             <CartProvider>
-
               <Navbar />
               <ShowMiniCart />
-
               <main className="pt-16">{children}</main>
-
-              {/* Static footer */}
               <Footer />
             </CartProvider>
           </WishlistProvider>
@@ -33,4 +32,3 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
-
