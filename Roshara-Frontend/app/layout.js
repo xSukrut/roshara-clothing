@@ -1,13 +1,9 @@
 // app/layout.jsx
-"use client";
-
 import "./globals.css";
-import { AuthProvider } from "../context/AuthContext";
-import { CartProvider } from "../context/CartContext";
-import { WishlistProvider } from "../context/WishlistContext";
 import Navbar from "./components/Navbar";
 import ShowMiniCart from "./components/ShowMiniCart";
 import Footer from "./components/layout/Footer";
+import Providers from "./providers"; // client-only wrapper for contexts
 
 export const metadata = {
   title: "Roshara",
@@ -18,16 +14,12 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="font-sans">
-        <AuthProvider>
-          <WishlistProvider>
-            <CartProvider>
-              <Navbar />
-              <ShowMiniCart />
-              <main className="pt-16">{children}</main>
-              <Footer />
-            </CartProvider>
-          </WishlistProvider>
-        </AuthProvider>
+        <Providers>
+          <Navbar />
+          <ShowMiniCart />
+          <main className="pt-16">{children}</main>
+          <Footer />
+        </Providers>
       </body>
     </html>
   );
