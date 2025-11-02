@@ -3,7 +3,7 @@ import { ROSHARA_SIZES } from "@/constants/sizes";
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
-import { useCart } from "@/context/CartContext";
+import { useCart } from "@context/CartContext";
 
 const SIZE_CHART = {
   "6XS": { bust: 22, waist: 15, hips: 25, shoulder: 13 },

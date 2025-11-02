@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getProductById } from "@/services/productService";
-import { useCart } from "@/context/CartContext";
+import { getProductById } from "@services/productService";
+import { useCart } from "@context/CartContext";
 
 export default function ProductDetail() {
   const { id } = useParams();

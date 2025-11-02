@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import axios from "axios";
-import { API_BASE_URL } from "@/utils/api";
-import { useAuth } from "@/context/AuthContext";
+import { API_BASE_URL } from "@utils/api";
+import { useAuth } from "@context/AuthContext";
 import { useRouter } from "next/navigation";
 
 export default function CreateCollectionPage() {

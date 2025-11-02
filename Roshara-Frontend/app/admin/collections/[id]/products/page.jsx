@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@context/AuthContext";
 import {
   getCollectionProductsAdmin,
   updateCollectionProductsAdmin,
-} from "@/../services/collectionService";
+} from "@services/collectionService";
 
 export default function ManageCollectionProductsPage() {
   const { id } = useParams() || {};

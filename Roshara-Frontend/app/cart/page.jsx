@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useCart } from "@/context/CartContext";
+import { useCart } from "@context/CartContext";
 import Image from "next/image";
 import Link from "next/link";
-import { getAllProducts } from "@/services/productService";
+import { getAllProducts } from "@services/productService";
 
 export default function CartPage() {
   const router = useRouter();

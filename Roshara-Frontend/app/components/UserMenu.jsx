@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@context/AuthContext";
 
 export default function UserMenu() {
   const { user, logout } = useAuth();

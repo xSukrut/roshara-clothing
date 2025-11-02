@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@context/AuthContext";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 

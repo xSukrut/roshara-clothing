@@ -2,8 +2,8 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { getOrderById } from "@/services/orderService";
+import { useAuth } from "@context/AuthContext";
+import { getOrderById } from "@services/orderService";
 
 function StatusBadge({ status }) {
   const map = {

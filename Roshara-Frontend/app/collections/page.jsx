@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { getAllCollections } from "@/services/collectionService";
+import { getAllCollections } from "@services/collectionService";
 
 /* --- same image helpers --- */
 const API_BASE =
