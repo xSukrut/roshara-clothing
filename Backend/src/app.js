@@ -6,7 +6,7 @@ import dotenv from "dotenv";
 import path from "path";
 
 import authRoutes from "./routes/authRoutes.js";
-import productRoutes from "./routes/productRoutes.js";
+import productRoutes from "./routes/productROutes.js";
 import collectionRoutes from "./routes/collectionRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
