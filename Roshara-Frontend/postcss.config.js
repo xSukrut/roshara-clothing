@@ -1,7 +1,7 @@
-/** @type {import('postcss').Config} */
-module.exports = {
+// ESM version
+export default {
   plugins: {
-    "@tailwindcss/postcss": {},
+    tailwindcss: {},
     autoprefixer: {},
   },
 };

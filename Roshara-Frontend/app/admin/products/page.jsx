@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import api from "@lib/apiClient";
+import api from "../../../lib/apiClient";
 
 const imgUrl = (src) => {
   if (!src) return "";
