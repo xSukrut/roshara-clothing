@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import ProductGrid from "../../../components/NewArrivals/ProductCard";
-import { getCollectionById } from "../../../../services/collectionService";
+import { getCollection } from "../../../../services/collectionService";
 import { getAllProducts } from "../../../../services/productService";
 import { useAuth } from "../../../../context/AuthContext"; 
 
@@ -31,7 +31,7 @@ export default function CollectionDetailPage() {
 
     const load = async () => {
       try {
-        const coll = await getCollectionById(id);
+        const coll = await getCollection(id);
         setCollection(coll);
 
         // ask backend for products filtered by collection (see backend enhancement below)
