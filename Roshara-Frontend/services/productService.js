@@ -29,3 +29,6 @@ export const getProductsByCollection = async (collectionId) => {
     return [];
   }
 };
+
+export const getProduct = getProductById;
+export default { getAllProducts, getProductById, getProductsByCollection, getProduct };
