@@ -1,32 +1,29 @@
 {
-  "name": "backend",
+  "name": "roshara-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": { "node": "20.x" },
+
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "seed:admin": "node src/seedAdmin.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
+
   "dependencies": {
-    "bcrypt": "^6.0.0",
-    "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
+    "dotenv": "^16.4.5",
     "express": "^5.1.0",
     "express-async-handler": "^1.2.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.19.1",
+    "mongoose": "^8.6.2",
     "morgan": "^1.10.1",
-    "multer": "^2.0.2",
-    "nodemailer": "^7.0.9",
-    "razorpay": "^2.9.6"
+    "multer": "^1.4.5-lts.1",
+    "bcryptjs": "^3.0.2"
   },
+
   "devDependencies": {
     "nodemon": "^3.1.10"
   }
