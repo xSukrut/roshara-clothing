@@ -7,8 +7,8 @@ import {
   deleteCollection,
   getCollectionProductsAdmin,
   updateCollectionProductsAdmin,
-} from "../controllers/collectionController.js";
-import { protect, admin } from "../middleware/authMiddleware.js";
+} from "../../controllers/collectionController.js";
+import { protect, admin } from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
