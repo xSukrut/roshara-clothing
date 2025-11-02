@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { useCart } from "@context/CartContext";
-import { getProduct } from "@services/productService";
+import { useCart } from "../../../context/CartContext";
+import { getProductById } from "../../../services/productService";
 
 const SIZE_CHART = {
   "6XS": { bust: 22, waist: 15, hips: 25, shoulder: 13 },
