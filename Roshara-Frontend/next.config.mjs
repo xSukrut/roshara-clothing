@@ -1,29 +1,30 @@
+// Roshara-Frontend/next.config.mjs
 import path from "path";
-import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-/** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
     remotePatterns: [
+      // backend on Render
       { protocol: "https", hostname: "roshara-clothing.onrender.com" },
+      // your domain(s)
       { protocol: "https", hostname: "roshara.in" },
       { protocol: "https", hostname: "www.roshara.in" },
-      // add cloud/CDN hosts later if needed
+      // (optional) Cloudinary if you use it later
+      { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
-  webpack(config) {
+  webpack: (config) => {
+    // Path aliases to match your jsconfig.json
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
-      "@": path.resolve(__dirname, "./"),
-      "@components": path.resolve(__dirname, "./app/components"),
-      "@services": path.resolve(__dirname, "./services"),
-      "@context": path.resolve(__dirname, "./context"),
+      "@": path.resolve(process.cwd(), "Roshara-Frontend"),
+      "@components": path.resolve(process.cwd(), "Roshara-Frontend/app/components"),
+      "@services": path.resolve(process.cwd(), "Roshara-Frontend/services"),
+      "@context": path.resolve(process.cwd(), "Roshara-Frontend/context"),
     };
     return config;
   },
 };
 
 export default nextConfig;
+
