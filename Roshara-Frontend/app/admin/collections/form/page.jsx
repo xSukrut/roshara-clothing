@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import api from "../../../../lib/apiClient";
+import api from "@/lib/apiClient";
 
 const asImg = (src) => (src?.startsWith("http") ? src : `http://localhost:5000${src}`);
 

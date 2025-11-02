@@ -3,9 +3,9 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { Search, ShoppingCart, Heart } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useCart } from "../../../context/CartContext";
-import { useWishlist } from "../../../context/WishlistContext";
-import { ROSHARA_SIZES } from "../../constants/sizes"; // make sure this file exists
+import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
+import { ROSHARA_SIZES } from "@/constants/sizes"; 
 
 // Build absolute URL for uploaded images
 const API_BASE =

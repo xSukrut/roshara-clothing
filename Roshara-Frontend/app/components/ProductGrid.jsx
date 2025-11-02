@@ -1,7 +1,7 @@
 
 "use client";
 import Link from "next/link";
-import ProductCard from "../components/NewArrivals/ProductCard";
+import ProductCard from "@/components/NewArrivals/ProductCard";
 
 export default function ProductGrid({ products = [] }) {
   if (!products || products.length === 0) {

@@ -4,7 +4,7 @@ export const metadata = {
     "Reach Roshara via WhatsApp, email, or Instagram DMs. We usually respond within 24 hours.",
 };
 
-import ContactForm from "../components/ContactForm"; // 
+import ContactForm from "@/components/ContactForm"; // 
 
 export default function ContactPage() {
   const whatsappNumber = "9324103174"; // business number will be updated soon

@@ -1,6 +1,6 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCart, lineKey } from "../../context/CartContext";
+import { useCart, lineKey } from "@/context/CartContext";
 import Image from "next/image";
 import { X } from "lucide-react";
 import Link from "next/link";

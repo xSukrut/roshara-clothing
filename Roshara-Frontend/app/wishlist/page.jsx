@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useWishlist } from "../../context/WishlistContext";
-import { useCart } from "../../context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
+import { useCart } from "@/context/CartContext";
 
 // Build a safe, absolute URL for images
 const API_BASE =

@@ -3,14 +3,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 
 import {
   listCouponsAdmin,
   createCouponAdmin,
   updateCouponAdmin,
   deleteCouponAdmin,
-} from "../../../services/couponService";
+} from "@/services/couponService";
 
 const EMPTY = {
   code: "",

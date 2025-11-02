@@ -6,9 +6,9 @@ import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Heart, ShoppingBag, User } from "lucide-react";
 
-import { useAuth } from "../../context/AuthContext";
-import { useCart } from "../../context/CartContext";
-import { useWishlist } from "../../context/WishlistContext";
+import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
+import { useWishlist } from "@/context/WishlistContext";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -123,7 +123,7 @@ export default function Navbar() {
     <span className={isAboutActive ? "underline underline-offset-8 decoration-2" : ""}>
       About
     </span>
-    <span className="translate-y-[1px] no-underline">▾</span>
+    <span className="translate-y-1px no-underline">▾</span>
   </button>
 
   {aboutOpen && (

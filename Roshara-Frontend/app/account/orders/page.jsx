@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAuth } from "../../../context/AuthContext";
-import { listMyOrders } from "../../services/orderService";
+import { useAuth } from "@/context/AuthContext";
+import { listMyOrders } from "@/services/orderService";
 
 function StatusBadge({ status }) {
   const map = {

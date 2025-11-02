@@ -1,12 +1,12 @@
 // app/page.jsx
 "use client";
 
-import HeroSection from "./components/home/HeroSection";
-import NewArrivals from "./components/NewArrivals/NewArrivals";
+import HeroSection from "@/components/home/HeroSection";
+import NewArrivals from "@/components/NewArrivals/NewArrivals";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getAllCollections } from "../services/collectionService";
-import CollectionCard from "./components/CollectionCard";
+import { getAllCollections } from "@/services/collectionService";
+import CollectionCard from "@/components/CollectionCard";
 
 export default function Homepage() {
   const [collections, setCollections] = useState([]);

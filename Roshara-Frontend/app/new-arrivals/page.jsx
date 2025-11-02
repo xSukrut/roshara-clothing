@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { getAllProducts } from "../../services/productService";
-import ProductCard from "../components/NewArrivals/ProductCard";
-import ProductDetails from "../components/NewArrivals/ProductDetails";
+import { getAllProducts } from "@/services/productService";
+import ProductCard from "@/components/NewArrivals/ProductCard";
+import ProductDetails from "@/components/NewArrivals/ProductDetails";
 
 export default function NewArrivalsPage() {
   const [all, setAll] = useState([]);

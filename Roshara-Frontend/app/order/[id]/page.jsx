@@ -3,8 +3,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { useAuth } from "../../../context/AuthContext";
-import { getOrderById } from "../../services/orderService";
+import { useAuth } from "@/context/AuthContext";
+import { getOrderById } from "@/services/orderService";
 
 export default function OrderDetailsPage() {
   const { id } = useParams();

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { getAllCollections } from "../../services/collectionService"; 
+import { getAllCollections } from "@/services/collectionService"; 
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, "") ||

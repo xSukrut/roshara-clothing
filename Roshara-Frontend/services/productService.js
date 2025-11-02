@@ -1,5 +1,5 @@
 import axios from "axios";
-import { API_BASE_URL } from "../utils/api";
+import { API_BASE_URL } from "@/utils/api";
 
 export const getAllProducts = async () => {
   try {

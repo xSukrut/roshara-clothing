@@ -5,11 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
-import { useAuth } from "../../context/AuthContext";
-import { useCart } from "../../context/CartContext";
+import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 
-import { createOrder, submitUpiProof } from "../services/orderService";
-import { getActiveCoupons } from "../../services/couponService";
+import { createOrder, submitUpiProof } from "../../services/orderService";
+import { getActiveCoupons } from "@/services/couponService";
 
 export default function CheckoutPage() {
   const router = useRouter();

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { getAllCollections } from "../services/collectionService";
+import { getAllCollections } from "@/services/collectionService";
 
 /* --- same image helpers --- */
 const API_BASE =
@@ -25,7 +25,6 @@ const urlFor = (src) => {
   if (path.startsWith("/uploads")) return `${API_BASE}${path}`;
   return `${API_BASE}${path}`;
 };
-/* -------------------------------- */
 
 export default function CollectionsPage() {
   const [collections, setCollections] = useState([]);
@@ -66,7 +65,7 @@ export default function CollectionsPage() {
                 alt={c.name || "Collection"}
                 width={1000}
                 height={700}
-                className="w-full h-[320px] object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500"
+                className="w-full h-320px object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500"
               />
 
               {/* Content overlay */}

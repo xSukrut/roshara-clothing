@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../context/AuthContext";
-import { listOrdersAdmin, adminVerifyOrder, adminUpdateOrderStatus } from "../../services/orderService";
+import { useAuth } from "@/context/AuthContext";
+import { listOrdersAdmin, adminVerifyOrder, adminUpdateOrderStatus } from "../../../services/orderService";
 
 export default function AdminOrdersPage() {
   const router = useRouter();
