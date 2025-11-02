@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import ProductGrid from "@/components/ProductGrid";
+import ProductGrid from "@/components/NewArrivals/ProductGrid";
 import { getCollectionById } from "@/services/collectionService";
 import { getAllProducts } from "@/services/productService";
 import { useAuth } from "@/context/AuthContext"; 
