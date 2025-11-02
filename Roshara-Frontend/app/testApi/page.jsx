@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import api from "@lib/apiClient";
+import api from "../../lib/apiClient";
 
 export default function TestApi() {
   const [result, setResult] = useState(null);

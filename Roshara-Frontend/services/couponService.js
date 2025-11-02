@@ -1,6 +1,6 @@
 // app/services/couponService.js
 import axios from "axios";
-import { API_BASE_URL } from "@utils/api";
+import { API_BASE_URL } from "../utils/api";
 
 // Public – used on checkout page
 

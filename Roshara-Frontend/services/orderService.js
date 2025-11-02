@@ -1,4 +1,4 @@
-import api from "@lib/apiClient";
+import api from "../lib/apiClient";
 
 const auth = (token) => ({
   headers: { Authorization: `Bearer ${token}` },

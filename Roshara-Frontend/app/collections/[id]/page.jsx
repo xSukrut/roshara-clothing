@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getAllProducts } from "@services/productService";
-import { getCollection } from "@services/collectionService";
-import ProductCard from "@components/NewArrivals/ProductCard";
-import ProductDetails from "@components/NewArrivals/ProductDetails";
+import { getAllProducts } from "../../../services/productService";
+import { getCollection } from "../../../services/collectionService";
+import ProductCard from "../../components/NewArrivals/ProductCard";
+import ProductDetails from "../../components/NewArrivals/ProductDetails";
 
 export default function CollectionProductsPage() {
   const { id } = useParams() || {};
