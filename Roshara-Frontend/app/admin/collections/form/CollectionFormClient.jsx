@@ -3,20 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "../../../../lib/apiClient";
-
-// If NEXT_PUBLIC_API_URL is "https://api.roshara.in/api",
-// this becomes "https://api.roshara.in"
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api")
-  .replace(/\/$/, "")
-  .replace(/\/api$/, "");
-
-function asImg(src) {
-  if (!src) return "/placeholder.png";
-  if (/^https?:\/\//i.test(src)) return src; // already absolute (Cloudinary, etc.)
-  const path = src.startsWith("/") ? src : `/${src}`;
-  if (path.startsWith("/uploads")) return `${API_BASE}${path}`;
-  return `${API_BASE}${path}`;
-}
+import { resolveImg } from "@/utils/img";
 
 export default function CollectionFormClient({ editId }) {
   const router = useRouter();
@@ -24,11 +11,10 @@ export default function CollectionFormClient({ editId }) {
   const [form, setForm] = useState({
     name: "",
     description: "",
-    image: "", // string URL or /uploads/xxx.jpg
+    image: "",
   });
   const [message, setMessage] = useState("");
 
-  // Load existing collection if editing
   useEffect(() => {
     let alive = true;
     if (!editId) return;
@@ -48,12 +34,9 @@ export default function CollectionFormClient({ editId }) {
       }
     })();
 
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [editId]);
 
-  // Upload image (accepts both "image" and "file" field names)
   const handleUpload = async (file) => {
     const fd = new FormData();
     fd.append("image", file);
@@ -61,7 +44,7 @@ export default function CollectionFormClient({ editId }) {
     const { data } = await api.post("/upload", fd, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    return data?.imageUrl || data?.url; // supports either shape
+    return data?.imageUrl || data?.url;
   };
 
   const handleSubmit = async (e) => {
@@ -115,7 +98,7 @@ export default function CollectionFormClient({ editId }) {
 
           {form.image && (
             <img
-              src={asImg(form.image)}
+              src={resolveImg(form.image)}
               alt="Collection preview"
               className="w-32 h-32 object-cover border rounded"
             />
@@ -139,10 +122,7 @@ export default function CollectionFormClient({ editId }) {
           onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
         />
 
-        <button
-          type="submit"
-          className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800"
-        >
+        <button type="submit" className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800">
           {editId ? "Update" : "Create"}
         </button>
       </form>

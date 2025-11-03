@@ -1,23 +1,46 @@
+// app/components/NewArrivals/ProductCard.jsx
 "use client";
+
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { Search, ShoppingCart, Heart } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useCart } from "../../../context/CartContext";
 import { useWishlist } from "../../../context/WishlistContext";
-import { ROSHARA_SIZES } from "../../constants/sizes"; 
+import { ROSHARA_SIZES } from "../../constants/sizes";
 
-// Build absolute URL for uploaded images
+// Public API origin, e.g. "https://roshara-clothing.onrender.com"
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, "") ||
-  "http://localhost:5000";
+  (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api")
+    .replace(/\/$/, "")
+    .replace(/\/api$/, "");
 
-const urlFor = (src) => {
+// Normalize ANY image-ish string to a usable, public URL
+function urlFor(src) {
   if (!src) return "/placeholder.png";
-  if (/^(https?:|data:|blob:)/.test(src)) return src;
-  if (src.startsWith("/uploads")) return `${API_BASE}${src}`;
-  return src;
-};
+
+  try {
+    // If it's absolute, parse it. If it's relative, resolve against API_BASE.
+    const u = new URL(src, API_BASE);
+
+    // If it’s pointing at localhost/127, force our public origin
+    if (["localhost", "127.0.0.1"].includes(u.hostname)) {
+      return API_BASE + u.pathname;
+    }
+
+    // If it’s a backend upload path, also force our public origin
+    if (u.pathname.startsWith("/uploads")) {
+      return API_BASE + u.pathname;
+    }
+
+    // Otherwise (cloudinary, CDN, etc), keep as is
+    return u.href;
+  } catch {
+    // Handle weird strings like "uploads/foo.jpg"
+    const path = src.startsWith("/") ? src : `/${src}`;
+    if (path.startsWith("/uploads")) return API_BASE + path;
+    return "/placeholder.png";
+  }
+}
 
 // Normalize sizes to simple strings
 function normalizeSizes(input) {
@@ -38,7 +61,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
 
-  // images
+  // Build image list from product payload
   const rawImages = Array.isArray(product?.images) ? product.images : [];
   let images = rawImages
     .map((img) => {
@@ -49,9 +72,13 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       return s ? urlFor(s) : null;
     })
     .filter(Boolean);
-  if (images.length === 0) images = ["/placeholder.png"];
 
-  // cycle on hover
+  // Fallback to product.image or placeholder
+  if (images.length === 0) {
+    images = [urlFor(product?.image) || "/placeholder.png"];
+  }
+
+  // Cycle on hover
   useEffect(() => {
     let t;
     if (hovering && images.length > 1) {
@@ -90,12 +117,15 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
         whileHover={{ scale: 1.02 }}
         transition={{ duration: 0.2 }}
       >
-        <Image
+        {/* Use plain <img> to avoid next/image host restrictions */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={images[currentImage]}
-          alt={product.name}
-          fill
-          className="object-cover transition-all duration-700"
-          sizes="(max-width: 768px) 100vw, 33vw"
+          alt={product?.name || "Product"}
+          className="absolute inset-0 w-full h-full object-cover transition-all duration-700"
+          onError={(e) => {
+            e.currentTarget.src = "/placeholder.png";
+          }}
         />
 
         {/* hover icons */}
@@ -158,11 +188,12 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       {showQuickAdd && (
         <div className="absolute top-0 right-0 w-56 bg-white shadow-xl rounded p-4 z-50">
           <div className="relative w-full h-32 mb-3">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={images[0]}
               alt={product.name}
-              fill
-              className="object-cover rounded"
+              className="w-full h-full object-cover rounded"
+              onError={(e) => (e.currentTarget.src = "/placeholder.png")}
             />
             <div className="absolute inset-0 bg-blue-200/30 rounded" />
           </div>

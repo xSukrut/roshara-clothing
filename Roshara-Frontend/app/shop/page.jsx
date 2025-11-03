@@ -109,9 +109,8 @@ export default function ShopAllPage() {
           </svg>
         </div>
 
-        {/* Filter Controls */}
+        {/* Filters */}
         <div className="flex flex-wrap items-center justify-center gap-3">
-          {/* Price Range */}
           <div className="flex items-center gap-2">
             <input
               type="number"
@@ -131,7 +130,7 @@ export default function ShopAllPage() {
               className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
             />
           </div>
-          {/* Sort Dropdown */}
+
           <div className="relative">
             <select
               value={sort}
@@ -140,12 +139,10 @@ export default function ShopAllPage() {
                shadow-sm hover:shadow-md transition-all duration-200 ease-in-out 
                focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-gray-400"
             >
-              <option value="new ">✨ Newest</option>
-              <option value="price-asc ">💸 Price: Low → High</option>
+              <option value="new">✨ Newest</option>
+              <option value="price-asc">💸 Price: Low → High</option>
               <option value="price-desc">💰 Price: High → Low</option>
             </select>
-
-            {/* Dropdown arrow */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none"
@@ -153,12 +150,7 @@ export default function ShopAllPage() {
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M19 9l-7 7-7-7"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/>
             </svg>
           </div>
         </div>
@@ -200,7 +192,6 @@ export default function ShopAllPage() {
         </>
       )}
 
-      {/* Product Details Modal */}
       {selectedProduct && (
         <ProductDetails
           product={selectedProduct}

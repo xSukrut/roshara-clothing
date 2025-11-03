@@ -36,7 +36,7 @@ export default function NewArrivalsPage() {
           <ProductCard
             key={p._id}
             product={p}
-            onSearch={setSelected} // quick view
+            onSearch={setSelected}
             size="lg"
           />
         ))}

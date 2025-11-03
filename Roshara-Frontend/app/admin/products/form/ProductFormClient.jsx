@@ -3,20 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import api from "../../../../lib/apiClient";
-
-// Build a clean absolute base for any /uploads paths from the backend
-// If NEXT_PUBLIC_API_URL is "https://api.roshara.in/api" -> API_BASE = "https://api.roshara.in"
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api")
-  .replace(/\/$/, "")
-  .replace(/\/api$/, "");
-
-const asImg = (src) => {
-  if (!src) return "/placeholder.png";
-  if (/^https?:\/\//i.test(src)) return src; // Cloudinary/absolute
-  const path = src.startsWith("/") ? src : `/${src}`;
-  if (path.startsWith("/uploads")) return `${API_BASE}${path}`;
-  return `${API_BASE}${path}`;
-};
+import { resolveImg } from "@/utils/img";
 
 export default function ProductFormClient({ editId }) {
   const router = useRouter();
@@ -27,13 +14,13 @@ export default function ProductFormClient({ editId }) {
     price: "",
     stock: "",
     images: [],
-    collection: "",      // store collection _id (recommended)
+    collection: "",      // store collection _id
     discount: "",
   });
   const [collections, setCollections] = useState([]);
   const [message, setMessage] = useState("");
 
-  // Load collections + (optionally) product if editing
+  // Load collections + product (if editing)
   useEffect(() => {
     let alive = true;
 
@@ -58,7 +45,6 @@ export default function ProductFormClient({ editId }) {
           price: p.price ?? "",
           stock: p.stock ?? "",
           images: Array.isArray(p.images) ? p.images : (p.image ? [p.image] : []),
-          // prefer _id if populated; else raw id; else blank
           collection: p.collection?._id || p.collection || "",
           discount: p.discount ?? p.discountPercent ?? "",
         });
@@ -67,12 +53,10 @@ export default function ProductFormClient({ editId }) {
       }
     })();
 
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [editId]);
 
-  // Upload to /api/upload — send both common field names to be safe
+  // Upload to /api/upload (support both "image" and "file")
   const handleUpload = async (file) => {
     const fd = new FormData();
     fd.append("image", file);
@@ -80,7 +64,6 @@ export default function ProductFormClient({ editId }) {
     const res = await api.post("/upload", fd, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    // backend may return { url } (Cloudinary) or { imageUrl }
     return res.data.url || res.data.imageUrl;
   };
 
@@ -91,18 +74,11 @@ export default function ProductFormClient({ editId }) {
     try {
       const payload = { ...form };
 
-      // Coerce numeric fields
       ["price", "stock", "discount"].forEach((k) => {
-        if (payload[k] !== "" && payload[k] !== null) {
-          payload[k] = Number(payload[k]);
-        }
+        if (payload[k] !== "" && payload[k] !== null) payload[k] = Number(payload[k]);
       });
 
-      // Ensure collection is ID-like (not the name)
-      // (If your backend expects name, swap back to name.)
-      if (payload.collection === "") {
-        delete payload.collection;
-      }
+      if (payload.collection === "") delete payload.collection;
 
       if (editId) {
         await api.put(`/products/${editId}`, payload);
@@ -143,7 +119,7 @@ export default function ProductFormClient({ editId }) {
               const imageUrl = await handleUpload(file);
               setForm((prev) => ({ ...prev, images: [...(prev.images || []), imageUrl] }));
             } catch {
-              // no toast here to keep it quiet in SSR
+              // silent
             }
           }}
           className="w-full p-2 border rounded mb-3"
@@ -154,7 +130,7 @@ export default function ProductFormClient({ editId }) {
             {form.images.map((img, idx) => (
               <img
                 key={idx}
-                src={asImg(img)}
+                src={resolveImg(img)}
                 alt="preview"
                 className="w-20 h-20 object-cover border rounded"
               />

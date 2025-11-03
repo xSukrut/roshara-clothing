@@ -6,6 +6,7 @@ const nextConfig = {
       { protocol: "https", hostname: "roshara-clothing.onrender.com" },
       { protocol: "https", hostname: "roshara.in" },
       { protocol: "https", hostname: "www.roshara.in" },
+       { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
   webpack(config) {

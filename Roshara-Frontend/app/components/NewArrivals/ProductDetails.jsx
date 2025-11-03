@@ -1,9 +1,9 @@
 "use client";
 import { ROSHARA_SIZES } from "../../constants/sizes";
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import { X } from "lucide-react";
 import { useCart } from "../../../context/CartContext";
+import { resolveImg } from "@/utils/img";
 
 const SIZE_CHART = {
   "6XS": { bust: 22, waist: 15, hips: 25, shoulder: 13 },
@@ -31,28 +31,15 @@ function normalizeSizes(list) {
 }
 
 function imagesFromProduct(product) {
-  const base =
-    process.env.NEXT_PUBLIC_API_URL?.replace(/\/api$/, "") ||
-    "http://localhost:5000";
-  const pick = (img) => {
-    if (!img) return null;
-    const raw =
-      typeof img === "string"
-        ? img
-        : img.url || img.src || img.path || img.location || img.file;
-    if (!raw) return null;
-    if (raw.startsWith("http")) return raw;
-    if (raw.startsWith("/uploads")) return `${base}${raw}`;
-    return raw;
-  };
-  const arr = (product?.images?.length ? product.images : [product?.image])
-    .map(pick)
+  const candidates = product?.images?.length ? product.images : [product?.image];
+  const out = (candidates || [])
+    .map((img) => resolveImg(img))
     .filter(Boolean);
-  return arr.length ? arr : ["/placeholder.png"];
+  return out.length ? out : ["/placeholder.png"];
 }
 
 export default function ProductDetails({ product, onClose, onAddToCart }) {
-  const { addItem, openMiniCart } = useCart(); // ⬅️ NEW (fallback)
+  const { addItem, openMiniCart } = useCart();
   const gallery = useMemo(() => imagesFromProduct(product), [product]);
   const [active, setActive] = useState(0);
   const sizes = useMemo(() => normalizeSizes(product?.sizes), [product?.sizes]);
@@ -75,22 +62,21 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
       price: product.price,
       image: gallery[0],
       size: selected,
-      qty, // your CartContext can ignore if it doesn't use qty
+      qty,
     };
 
-    // Use parent handler if provided, else fallback to CartContext
     if (typeof onAddToCart === "function") {
       onAddToCart(item);
     } else {
-      addItem(item); // ⬅️ Fallback path
-      openMiniCart?.(); // ⬅️ Show mini cart if available
+      addItem(item);
+      openMiniCart?.();
     }
     onClose?.();
   };
 
   return (
     <div className=" fixed inset-0 z-90 bg-black/50 backdrop-blur-xs">
-      <div className="fixed inset-0 z-100 flex items-center justify-center p-4 w-full max-w-3xl mx-auto  ">
+      <div className="fixed inset-0 z-100 flex items-center justify-center p-4 w-full max-w-3xl mx-auto">
         <div className="relative bg-white w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl">
           <button
             className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200"

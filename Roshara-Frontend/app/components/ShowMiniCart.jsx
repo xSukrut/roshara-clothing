@@ -5,6 +5,7 @@ import Image from "next/image";
 import { X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { resolveImg } from "@/utils/img";
 
 export default function ShowMiniCart() {
   const { items, removeItem, itemsPrice, shippingPrice, taxPrice, totalPrice } =
@@ -69,11 +70,7 @@ export default function ShowMiniCart() {
                     {/* Image */}
                     <div className="relative w-18 h-18 rounded-lg overflow-hidden bg-gray-100 group">
                       <Image
-                        src={
-                          item.image?.startsWith("http")
-                            ? item.image
-                            : `http://localhost:5000${item.image}`
-                        }
+                        src={resolveImg(item.image)}
                         alt={item.name}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
