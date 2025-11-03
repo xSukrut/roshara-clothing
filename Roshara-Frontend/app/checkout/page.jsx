@@ -316,7 +316,7 @@ export default function CheckoutPage() {
 
               <div className="text-center text-gray-700 mb-2">
                 <p className="font-medium">
-                  <span className="text-gray-600">UPI ID:</span>{" "}
+                  <span className="text-gray-600">UPI ID: 9324103174@kotak811</span>{" "}
                   <b></b>
                 </p>
                 <p>
