@@ -14,11 +14,12 @@ export default function ProductFormClient({ editId }) {
     price: "",
     stock: "",
     images: [],
-    collection: "",      // store collection _id
+    collection: "", // store collection _id
     discount: "",
   });
   const [collections, setCollections] = useState([]);
   const [message, setMessage] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   // Load collections + product (if editing)
   useEffect(() => {
@@ -53,18 +54,42 @@ export default function ProductFormClient({ editId }) {
       }
     })();
 
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [editId]);
 
-  // Upload to /api/upload (support both "image" and "file")
+  /**
+   * Upload to /api/upload (Cloudinary-backed).
+   * IMPORTANT: do NOT set Content-Type manually when sending FormData
+   * — the browser will attach the boundary for us.
+   */
   const handleUpload = async (file) => {
     const fd = new FormData();
-    fd.append("image", file);
-    fd.append("file", file);
-    const res = await api.post("/upload", fd, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    return res.data.url || res.data.imageUrl;
+    fd.append("image", file); // backend accepts "image"
+
+    setUploading(true);
+    try {
+      const res = await api.post("/upload", fd, {
+        // DO NOT set Content-Type here
+        // headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const url = res?.data?.url || res?.data?.imageUrl;
+      if (!url) throw new Error("Upload response missing url");
+
+      // Add to images array
+      setForm((prev) => ({ ...prev, images: [...(prev.images || []), url] }));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImageAt = (idx) => {
+    setForm((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== idx),
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -74,6 +99,7 @@ export default function ProductFormClient({ editId }) {
     try {
       const payload = { ...form };
 
+      // coerce numeric fields
       ["price", "stock", "discount"].forEach((k) => {
         if (payload[k] !== "" && payload[k] !== null) payload[k] = Number(payload[k]);
       });
@@ -108,35 +134,53 @@ export default function ProductFormClient({ editId }) {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Image uploader */}
-        <label className="block mb-2 font-medium">Upload Product Image</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            try {
-              const imageUrl = await handleUpload(file);
-              setForm((prev) => ({ ...prev, images: [...(prev.images || []), imageUrl] }));
-            } catch {
-              // silent
-            }
-          }}
-          className="w-full p-2 border rounded mb-3"
-        />
+        <div>
+          <label className="block mb-2 font-medium">Upload Product Image</label>
+          <input
+            type="file"
+            accept="image/*"
+            disabled={uploading}
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              try {
+                await handleUpload(file);
+              } catch (err) {
+                setMessage(err?.message || "Upload failed");
+              } finally {
+                e.target.value = ""; // reset
+              }
+            }}
+            className="w-full p-2 border rounded mb-3"
+          />
 
-        {form.images?.length > 0 && (
-          <div className="flex gap-2 mt-2 flex-wrap">
-            {form.images.map((img, idx) => (
-              <img
-                key={idx}
-                src={resolveImg(img)}
-                alt="preview"
-                className="w-20 h-20 object-cover border rounded"
-              />
-            ))}
-          </div>
-        )}
+          {uploading && (
+            <div className="text-sm text-gray-500 mb-2">Uploading…</div>
+          )}
+
+          {form.images?.length > 0 && (
+            <div className="flex gap-2 mt-2 flex-wrap">
+              {form.images.map((img, idx) => (
+                <div key={idx} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={resolveImg(img)}
+                    alt="preview"
+                    className="w-20 h-20 object-cover border rounded"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImageAt(idx)}
+                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-black text-white text-xs"
+                    title="Remove"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <input
           type="text"
@@ -191,7 +235,11 @@ export default function ProductFormClient({ editId }) {
           className="w-full p-2 border rounded"
         />
 
-        <button type="submit" className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800">
+        <button
+          type="submit"
+          disabled={uploading}
+          className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 disabled:opacity-50"
+        >
           {editId ? "Update" : "Create"}
         </button>
       </form>

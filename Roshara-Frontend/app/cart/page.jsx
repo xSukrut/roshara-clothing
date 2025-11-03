@@ -1,3 +1,4 @@
+// app/cart/page.jsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -7,15 +8,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { getAllProducts } from "@services/productService";
 
-/** Build a safe, absolute URL for images.
- *  - Accepts strings or simple objects with .url/.src/.path
- *  - If it starts with http(s), return as-is
- *  - Else prefix with API origin (NEXT_PUBLIC_API_URL without trailing /api)
- */
-const API_ORIGIN =
-  (process.env.NEXT_PUBLIC_API_URL || "https://roshara-clothing.onrender.com/api")
-    .replace(/\/+$/, "")
-    .replace(/\/api$/, "");
+const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || "https://roshara-clothing.onrender.com/api")
+  .replace(/\/+$/, "")
+  .replace(/\/api$/, "");
 
 const pickPath = (src) => {
   if (!src) return null;
@@ -30,6 +25,7 @@ const urlFor = (src) => {
   const path = p.startsWith("/") ? p : `/${p}`;
   return `${API_ORIGIN}${path}`;
 };
+
 
 export default function CartPage() {
   const router = useRouter();
@@ -58,7 +54,6 @@ export default function CartPage() {
     [items]
   );
 
-  // Fetch recommendations (exclude already-in-cart items)
   useEffect(() => {
     let ignore = false;
     (async () => {
@@ -67,7 +62,7 @@ export default function CartPage() {
         const all = await getAllProducts();
         const list = Array.isArray(all) ? all : [];
         const filtered = list.filter((p) => !cartIds.has(p._id));
-        const top = filtered.slice(0, 4);
+        const top = filtered.slice(0, 8); // show up to 8 across breakpoints
         if (!ignore) setRecommendations(top);
       } catch {
         if (!ignore) setRecError("Could not load recommendations.");
@@ -95,7 +90,7 @@ export default function CartPage() {
       price: p.price,
       image: urlFor(firstImage),
     });
-    if (typeof openMiniCart === "function") openMiniCart();
+    openMiniCart?.();
   };
 
   return (
@@ -109,68 +104,74 @@ export default function CartPage() {
         {items.length === 0 ? (
           <p className="text-gray-600 text-lg">Your bag is empty.</p>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-4">
             {items.map((it) => {
               const img = urlFor(it.image);
               return (
                 <div
                   key={`${it.product}-${it.size || "NOSIZE"}`}
-                  className="relative flex flex-col sm:flex-row items-center justify-between gap-4 border border-amber-100 bg-[#FFFDF9] rounded-2xl p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.05)] transition-all duration-300 hover:shadow-[0_6px_20px_rgba(0,0,0,0.1)]   hover:bg-[#e6e4e0] group"
+                  className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-amber-100 bg-white rounded-2xl p-3 sm:p-4 shadow-sm transition-all duration-300 hover:shadow-lg"
                 >
                   {/* Remove */}
                   <button
                     onClick={() => removeItem(it.product, it.size)}
-                    className="absolute top-2 right-3 text-gray-400 hover:text-red-800  text-lg transition-all duration-200"
+                    className="absolute top-2 right-3 text-gray-400 hover:text-red-600 text-lg transition-colors"
+                    aria-label="Remove from cart"
                   >
                     ✕
                   </button>
 
-                  {/* Image & Details */}
+                  {/* Image + meta */}
                   <div className="flex items-center gap-4 w-full sm:w-auto">
-                    <div className="relative w-28 h-28 rounded-xl overflow-hidden shadow-sm transition-all duration-500 ease-in-out">
+                    <div className="relative w-28 h-28 rounded-xl overflow-hidden bg-gray-100">
                       <Image
                         src={img}
                         alt={it.name}
                         fill
                         sizes="112px"
-                        className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
+                        className="object-cover transition-transform duration-500 ease-in-out hover:scale-110"
                       />
                     </div>
-                    <div>
-                      <div className="font-semibold text-2xl  text-gray-900">
+
+                    <div className="min-w-0">
+                      <div className="font-semibold text-lg text-gray-900 leading-tight truncate">
                         {it.name}
                       </div>
                       {it.size && (
-                        <div className="text-md text-gray-600 mt-0.2 mb-10">
+                        <div className="text-sm text-gray-600 mt-1">
                           Size: <span className="font-medium">{it.size}</span>
                         </div>
                       )}
+                      <div className="mt-2 inline-flex items-center gap-2">
+                        <span className="text-sm text-gray-500">Qty</span>
+                        <div className="flex items-center bg-white border border-gray-300 rounded-full shadow-sm overflow-hidden">
+                          <button
+                            onClick={() =>
+                              setQty(it.product, it.size, Math.max(it.qty - 1, 1))
+                            }
+                            className="w-8 h-8 grid place-items-center hover:bg-gray-100"
+                            aria-label="Decrease quantity"
+                          >
+                            −
+                          </button>
+                          <span className="px-3 font-medium text-gray-800">
+                            {it.qty}
+                          </span>
+                          <button
+                            onClick={() => setQty(it.product, it.size, it.qty + 1)}
+                            className="w-8 h-8 grid place-items-center hover:bg-gray-100"
+                            aria-label="Increase quantity"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Quantity + Price */}
-                  <div className="flex items-center  gap-35">
-                    <div className="flex items-center bg-white border border-gray-300 rounded-3xl shadow-sm overflow-hidden">
-                      <button
-                        onClick={() =>
-                          setQty(it.product, it.size, Math.max(it.qty - 1, 1))
-                        }
-                        className="px-3 py-1 hover:bg-gray-100 transition-all duration-200"
-                      >
-                        −
-                      </button>
-                      <span className="px-4 font-medium text-gray-800">
-                        {it.qty}
-                      </span>
-                      <button
-                        onClick={() => setQty(it.product, it.size, it.qty + 1)}
-                        className="px-3 py-1 hover:bg-gray-100 transition-all duration-200"
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    <div className="text-lg text-amber-900 pr-20 font-semibold">
+                  {/* Price */}
+                  <div className="ml-auto sm:ml-0">
+                    <div className="text-xl font-semibold text-amber-900">
                       ₹{it.price}
                     </div>
                   </div>
@@ -182,28 +183,15 @@ export default function CartPage() {
       </section>
 
       {/* Right — Summary */}
-      <aside className="border border-amber-100 rounded-2xl p-6 h-fit shadow-[0_2px_12px_rgba(0,0,0,0.08)] bg-linear-to-br from-white via-[#fffdfa] to-[#fef8f2] transition-all duration-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.12)] hover:-translate-y-1">
+      <aside className="border border-amber-100 rounded-2xl p-6 h-fit shadow-sm bg-gradient-to-br from-white via-[#fffdfa] to-[#fef8f2] transition-all duration-300 hover:shadow-lg">
         <h2 className="text-2xl font-bold mb-6 text-[#44120F] text-center">
           Order Summary
         </h2>
 
         <div className="space-y-3 text-gray-700">
-          <div className="flex justify-between">
-            <span className="font-medium">Subtotal</span>
-            <span className="font-semibold">₹{itemsPrice}</span>
-          </div>
-
-          <div className="flex justify-between">
-            <span className="font-medium">Shipping</span>
-            <span className="font-semibold">
-              {shippingPrice ? `₹${shippingPrice}` : "FREE"}
-            </span>
-          </div>
-
-          <div className="flex justify-between">
-            <span className="font-medium">Tax</span>
-            <span className="font-semibold">₹{taxPrice}</span>
-          </div>
+          <Row label="Subtotal" value={`₹${itemsPrice}`} />
+          <Row label="Shipping" value={shippingPrice ? `₹${shippingPrice}` : "FREE"} />
+          <Row label="Tax" value={`₹${taxPrice}`} />
         </div>
 
         <hr className="my-4 border-gray-200" />
@@ -230,48 +218,16 @@ export default function CartPage() {
       </aside>
 
       {/* Recommendations */}
-      <div className="md:col-span-3 max-w-6xl mx-auto mt-12 p-6 bg-linear-to-b from-white to-[#FFFDF9] rounded-2xl shadow-sm">
-        <h2 className="text-2xl md:text-3xl font-bold mb-6 text-[#44120F] text-center">
+      <div className="md:col-span-3 max-w-6xl mx-auto mt-12 p-6 bg-gradient-to-b from-white to-[#FFFDF9] rounded-2xl shadow-sm">
+        <h2 className="text-2xl md:text-3xl font-extrabold mb-6 text-[#44120F] text-center">
           You might also like
         </h2>
 
-        {recommendations && recommendations.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-            {recommendations.map((p) => {
-              const first = p.images?.[0] || p.image || "/placeholder.png";
-              return (
-                <div
-                  key={p._id}
-                  className="group border border-gray-100 rounded-2xl bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden transition-all duration-300 hover:shadow-[0_6px_20px_rgba(0,0,0,0.1)] hover:-translate-y-1"
-                >
-                  <div className="relative w-full h-48 sm:h-56 overflow-hidden rounded-t-2xl">
-                    <Image
-                      src={urlFor(first)}
-                      alt={p.name}
-                      fill
-                      sizes="(max-width: 768px) 50vw, 25vw"
-                      className="object-cover transition-transform duration-500 ease-in-out group-hover:scale-110"
-                    />
-                  </div>
-
-                  <div className="p-4 text-center">
-                    <div className="text-lg font-semibold text-gray-900 truncate">
-                      {p.name}
-                    </div>
-                    <div className="text-sm text-amber-700 mt-1 font-medium">
-                      ₹{p.price}
-                    </div>
-
-                    <button
-                      onClick={() => addRecToCart(p)}
-                      className="mt-3 w-full bg-[#44120F] text-white py-2.5 rounded-lg font-medium text-sm transition-all duration-200 hover:bg-gray-800 hover:scale-[1.02] active:scale-95"
-                    >
-                      Add to Bag
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+        {recommendations?.length ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5 md:gap-6">
+            {recommendations.map((p) => (
+              <RecommendationCard key={p._id} product={p} onAdd={addRecToCart} />
+            ))}
           </div>
         ) : (
           <p className="text-center text-gray-500">
@@ -282,11 +238,58 @@ export default function CartPage() {
         <div className="flex justify-center mt-10">
           <Link
             href="/shop"
-            className="inline-block bg-linear-to-r from-black to-gray-800 text-white px-6 py-3 rounded-lg font-medium hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
+            className="inline-block bg-gradient-to-r from-black to-gray-800 text-white px-6 py-3 rounded-lg font-medium hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
           >
             Continue Shopping
           </Link>
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+function Row({ label, value }) {
+  return (
+    <div className="flex justify-between">
+      <span className="font-medium">{label}</span>
+      <span className="font-semibold">{value}</span>
+    </div>
+  );
+}
+function RecommendationCard({ product, onAdd }) {
+  const first = product.images?.[0] || product.image || "/placeholder.png";
+  const img = urlFor(first);
+
+  return (
+    <div className="group border border-gray-100 rounded-2xl bg-white shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+      {/* Image */}
+      <div className="relative w-full aspect-[2/3] overflow-hidden">
+        <Image
+          src={img}
+          alt={product.name}
+          fill
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+        />
+      </div>
+
+      {/* Content */}
+      <div className="p-5 flex flex-col items-center text-center">
+        <h3 className="text-lg font-semibold text-gray-900 leading-snug line-clamp-1">
+          {product.name}
+        </h3>
+
+        <p className="text-base font-semibold text-amber-800 mt-1">
+          ₹{product.price}
+        </p>
+
+        <button
+          onClick={() => onAdd(product)}
+          className="mt-4 w-full rounded-lg bg-[#44120F] text-white py-3 text-sm font-medium transition-all duration-200 hover:bg-black hover:shadow-md active:scale-[0.98]"
+        >
+          Add to Bag
+        </button>
       </div>
     </div>
   );

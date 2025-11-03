@@ -1,14 +1,41 @@
 import Collection from "../models/collectionModel.js";
 import Product from "../models/productModel.js";
 
+/* Normalize any possible image field from the client:
+   supports: image, imageUrl, url (string) or an object { url, imageUrl, src, path, location, file } */
+function pickImage(payload = {}) {
+  let v =
+    payload.image ??
+    payload.imageUrl ??
+    payload.url ??
+    payload.src ??
+    payload.path ??
+    payload.location ??
+    payload.file ??
+    "";
+
+  if (v && typeof v === "object") {
+    v = v.url || v.imageUrl || v.src || v.path || v.location || v.file || "";
+  }
+  return typeof v === "string" ? v.trim() : "";
+}
+
 // ✅ Create a new collection
 export const createCollection = async (req, res) => {
   try {
-    const { name, description } = req.body;
-    const existing = await Collection.findOne({ name });
-    if (existing) return res.status(400).json({ message: "Collection already exists" });
+    const { name = "", description = "" } = req.body || {};
+    const existing = await Collection.findOne({ name: name.trim() });
+    if (existing)
+      return res.status(400).json({ message: "Collection already exists" });
 
-    const collection = await Collection.create({ name, description });
+    const image = pickImage(req.body); // <— NEW: capture image/url
+
+    const collection = await Collection.create({
+      name: name.trim(),
+      description,
+      image, // <— persist
+    });
+
     res.status(201).json(collection);
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
@@ -39,12 +66,17 @@ export const getCollectionById = async (req, res) => {
 // ✅ Update collection
 export const updateCollection = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description } = req.body || {};
     const collection = await Collection.findById(req.params.id);
     if (!collection) return res.status(404).json({ message: "Collection not found" });
 
-    collection.name = name || collection.name;
-    collection.description = description || collection.description;
+    // update basic fields
+    if (typeof name === "string" && name.trim()) collection.name = name.trim();
+    if (typeof description === "string") collection.description = description;
+
+    // update image only if a new one was provided
+    const newImage = pickImage(req.body);
+    if (newImage) collection.image = newImage;
 
     const updated = await collection.save();
     res.status(200).json(updated);
@@ -66,13 +98,13 @@ export const deleteCollection = async (req, res) => {
   }
 };
 
+// ----- Admin: manage products in a collection -----
 
 export const getCollectionProductsAdmin = async (req, res) => {
   try {
     const id = req.params.id;
 
-    const inCollection = await Product.find({ collection: id })
-      .select("name price images");
+    const inCollection = await Product.find({ collection: id }).select("name price images");
 
     const outside = await Product.find({
       $or: [

@@ -306,17 +306,18 @@ export default function CheckoutPage() {
             <h4 className="font-semibold text-lg mb-4 text-center">Pay via UPI</h4>
             <div className="flex flex-col items-center">
               <Image
-                src="/MyUpiQR.png"
-                alt="UPI QR Code"
-                width={200}
-                height={200}
-                className="rounded-xl border mb-4"
-              />
+  src="/static/upi-qr.png"
+  alt="UPI QR Code"
+  width={220}
+  height={220}
+  priority
+  className="rounded-xl border mb-4"
+/>
 
               <div className="text-center text-gray-700 mb-2">
                 <p className="font-medium">
                   <span className="text-gray-600">UPI ID:</span>{" "}
-                  <b>roshara@upi</b>
+                  <b></b>
                 </p>
                 <p>
                   <span className="text-gray-600">Amount:</span> ₹

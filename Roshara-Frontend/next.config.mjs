@@ -1,12 +1,17 @@
+// next.config.mjs
 import path from "path";
 
 const nextConfig = {
   images: {
+    // Keep any loader defaults, just expand remotePatterns to include Cloudinary
     remotePatterns: [
+      // your backend(s)
       { protocol: "https", hostname: "roshara-clothing.onrender.com" },
       { protocol: "https", hostname: "roshara.in" },
       { protocol: "https", hostname: "www.roshara.in" },
-       { protocol: "https", hostname: "res.cloudinary.com" },
+
+      // ✅ Cloudinary (secure URLs look like https://res.cloudinary.com/<cloud_name>/...)
+      { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
   webpack(config) {

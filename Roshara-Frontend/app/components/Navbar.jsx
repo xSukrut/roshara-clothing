@@ -97,12 +97,12 @@ export default function Navbar() {
             </Link>
           </li>
           <li>
-            <Link
+            {/* <Link
               href="/collections"
               className={`${hoverClass} ${isActive("/collections") ? "underline underline-offset-8" : ""}`}
             >
               Collections
-            </Link>
+            </Link> */}
           </li>
 
           {/* About (click-to-toggle) */}
@@ -219,7 +219,7 @@ export default function Navbar() {
           <ul className="space-y-2">
             <li><Link href="/new-arrivals" className="block font-medium">New Arrivals</Link></li>
             <li><Link href="/shop" className="block font-medium">Shop All</Link></li>
-            <li><Link href="/collections" className="block font-medium">Collections</Link></li>
+            {/* <li><Link href="/collections" className="block font-medium">Collections</Link></li> */}
 
             {/* Mobile About as inline expandable */}
             <li className="pt-2 border-t">
