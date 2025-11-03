@@ -32,14 +32,19 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin(origin, cb) {
-    if (!origin) return cb(null, true); // SSR, curl, same-origin
+    if (!origin) return cb(null, true);
     const ok = allowedOrigins.some(o =>
       o instanceof RegExp ? o.test(origin) : o === origin
     );
-    return ok ? cb(null, true) : cb(new Error("Not allowed by CORS"));
+    if (ok) cb(null, true);
+    else {
+      console.warn("🚫 Blocked by CORS:", origin);
+      cb(null, false);
+    }
   },
   credentials: true,
 };
+
 
 app.use(cors(corsOptions));
 
