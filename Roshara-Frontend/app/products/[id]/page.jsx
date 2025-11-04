@@ -1,3 +1,4 @@
+// app/products/[id]/page.jsx
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -36,6 +37,13 @@ export default function ProductDetailsPage() {
   const [err, setErr] = useState("");
   const [showGuide, setShowGuide] = useState(false);
 
+  // custom size states
+  const [useCustom, setUseCustom] = useState(false);
+  const [bust, setBust] = useState("");
+  const [waist, setWaist] = useState("");
+  const [hips, setHips] = useState("");
+  const [shoulder, setShoulder] = useState("");
+
   useEffect(() => {
     let mounted = true;
     setLoading(true);
@@ -60,25 +68,48 @@ export default function ProductDetailsPage() {
   const main = gallery[active] || "/placeholder.png";
   const sizesAvailable = resolvedSizes(product);
 
-  const selectedMeasures = size ? SIZE_CHART[size] : null;
+  const selectedMeasures = !useCustom && size ? SIZE_CHART[size] : null;
 
   if (loading) return <div className="max-w-6xl mx-auto p-6">Loading…</div>;
   if (err || !product) return <div className="max-w-6xl mx-auto p-6 text-red-600">{err || "Not found"}</div>;
 
   const { name, brand, price, mrp, discountPercent, description, specs } = product || {};
 
-  const handleAdd = () => {
-    if (sizesAvailable.length && !size) return;
+  function handleAdd() {
+    // if sizes are available and user not using custom, require a size
+    if (!useCustom && sizesAvailable.length && !size) {
+      alert("Please select a size.");
+      return;
+    }
+
+    // if using custom, ensure at least one measurement provided (simple validation)
+    let customSizeObj = null;
+    if (useCustom) {
+      const hasAny = [bust, waist, hips, shoulder].some((v) => (v ?? "").toString().trim() !== "");
+      if (!hasAny) {
+        alert("Please enter at least one measurement for custom size.");
+        return;
+      }
+      customSizeObj = {
+        bust: bust ? String(bust).trim() : "",
+        waist: waist ? String(waist).trim() : "",
+        hips: hips ? String(hips).trim() : "",
+        shoulder: shoulder ? String(shoulder).trim() : "",
+      };
+    }
+
+    // add to cart, attach customSize when used
     addItem({
       product: product._id,
       name: product.name,
       price: product.price,
       qty: 1,
-      size: size || null,
+      size: useCustom ? "Custom" : size || null,
+      customSize: customSizeObj,
       image: gallery[0],
     });
     openMiniCart?.();
-  };
+  }
 
   return (
     <main className="max-w-6xl mx-auto p-6 grid gap-10 md:grid-cols-2">
@@ -89,9 +120,7 @@ export default function ProductDetailsPage() {
             <button
               key={src + i}
               onClick={() => setActive(i)}
-              className={`relative w-20 h-24 rounded-lg overflow-hidden border ${
-                i === active ? "border-black" : "border-gray-200"
-              }`}
+              className={`relative w-20 h-24 rounded-lg overflow-hidden border ${i === active ? "border-black" : "border-gray-200"}`}
               aria-label={`Preview image ${i + 1}`}
             >
               <img src={src} alt={`thumb ${i + 1}`} className="w-full h-full object-cover" />
@@ -108,9 +137,7 @@ export default function ProductDetailsPage() {
             <button
               key={src + i}
               onClick={() => setActive(i)}
-              className={`relative w-16 h-20 rounded-lg overflow-hidden border ${
-                i === active ? "border-black" : "border-gray-200"
-              }`}
+              className={`relative w-16 h-20 rounded-lg overflow-hidden border ${i === active ? "border-black" : "border-gray-200"}`}
               aria-label={`Preview image ${i + 1}`}
             >
               <img src={src} alt={`thumb ${i + 1}`} className="w-full h-full object-cover" />
@@ -136,32 +163,53 @@ export default function ProductDetailsPage() {
           <div className="mt-6">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-sm font-semibold">Select size</div>
-              <button
-                type="button"
-                onClick={() => setShowGuide(true)}
-                className="text-xs underline underline-offset-4 text-gray-600 hover:text-black"
-              >
-                Size guide
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowGuide(true)}
+                  className="text-xs underline underline-offset-4 text-gray-600 hover:text-black"
+                >
+                  Size guide
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    // toggle custom mode; when toggling on, clear selected regular size
+                    setUseCustom((prev) => {
+                      const next = !prev;
+                      if (next) setSize(null);
+                      return next;
+                    });
+                  }}
+                  className={`text-sm px-3 py-1 border rounded ${useCustom ? "bg-black text-white" : "bg-white"}`}
+                  aria-pressed={useCustom}
+                >
+                  {useCustom ? "Using Custom" : "Custom"}
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {sizesAvailable.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSize(s)}
-                  className={`w-12 h-12 rounded-full border text-sm ${
-                    size === s ? "border-black" : "border-gray-300"
-                  } hover:border-black`}
-                  aria-label={`Select size ${s}`}
-                >
-                  {s}
-                </button>
-              ))}
+              {sizesAvailable.map((s) => {
+                const disabled = useCustom; // disable regular sizes when using custom
+                const active = !useCustom && size === s;
+                return (
+                  <button
+                    key={s}
+                    onClick={() => !disabled && setSize(s)}
+                    className={`w-12 h-12 rounded-full border text-sm ${active ? "border-black bg-black text-white" : "border-gray-300 bg-white"} ${disabled ? "opacity-40 cursor-not-allowed" : "hover:border-black"}`}
+                    aria-label={`Select size ${s}`}
+                    disabled={disabled}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Selected measurements */}
-            {selectedMeasures && (
+            {/* Selected measurements for regular sizes */}
+            {!useCustom && selectedMeasures && (
               <div className="mt-4 text-sm">
                 <div className="font-medium">Selected size: {size}</div>
                 <div className="mt-1 grid grid-cols-2 sm:grid-cols-4 gap-2 text-gray-700">
@@ -173,6 +221,56 @@ export default function ProductDetailsPage() {
                 <div className="text-xs text-gray-500 mt-1">All measurements in inches.</div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Custom inputs (shown when useCustom) */}
+        {useCustom && (
+          <div className="mt-4">
+            <div className="font-medium mb-2">Custom measurements (in inches)</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="block">
+                <div className="text-xs text-gray-500 mb-1">Bust</div>
+                <input
+                  value={bust}
+                  onChange={(e) => setBust(e.target.value)}
+                  placeholder="e.g. 34"
+                  className="w-full border rounded px-3 py-2"
+                />
+              </label>
+
+              <label className="block">
+                <div className="text-xs text-gray-500 mb-1">Waist</div>
+                <input
+                  value={waist}
+                  onChange={(e) => setWaist(e.target.value)}
+                  placeholder="e.g. 28"
+                  className="w-full border rounded px-3 py-2"
+                />
+              </label>
+
+              <label className="block">
+                <div className="text-xs text-gray-500 mb-1">Hips</div>
+                <input
+                  value={hips}
+                  onChange={(e) => setHips(e.target.value)}
+                  placeholder="e.g. 36"
+                  className="w-full border rounded px-3 py-2"
+                />
+              </label>
+
+              <label className="block">
+                <div className="text-xs text-gray-500 mb-1">Shoulder</div>
+                <input
+                  value={shoulder}
+                  onChange={(e) => setShoulder(e.target.value)}
+                  placeholder="e.g. 14"
+                  className="w-full border rounded px-3 py-2"
+                />
+              </label>
+            </div>
+
+            <div className="text-xs text-gray-500 mt-2">When custom measurements are used, regular sizes will be disabled and the cart item will contain your measurements.</div>
           </div>
         )}
 
@@ -245,11 +343,7 @@ function SizeGuideModal({ onClose }) {
 
         <div className="max-h-[75vh] overflow-auto p-5 space-y-5">
           {/* Guide image */}
-          <img
-            src="/size-guide.jpg"   
-            alt="Roshara Size Guide"
-            className="w-full h-auto rounded"
-          />
+          <img src="/size-guide.jpg" alt="Roshara Size Guide" className="w-full h-auto rounded" />
 
           {/* Table (text searchable & accessible) */}
           <div className="mt-4">

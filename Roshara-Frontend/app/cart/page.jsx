@@ -26,7 +26,6 @@ const urlFor = (src) => {
   return `${API_ORIGIN}${path}`;
 };
 
-
 export default function CartPage() {
   const router = useRouter();
   const {
@@ -62,7 +61,7 @@ export default function CartPage() {
         const all = await getAllProducts();
         const list = Array.isArray(all) ? all : [];
         const filtered = list.filter((p) => !cartIds.has(p._id));
-        const top = filtered.slice(0, 8); // show up to 8 across breakpoints
+        const top = filtered.slice(0, 8);
         if (!ignore) setRecommendations(top);
       } catch {
         if (!ignore) setRecError("Could not load recommendations.");
@@ -101,24 +100,25 @@ export default function CartPage() {
           Your Bag
         </h1>
 
-        {items.length === 0 ? (
+        {!Array.isArray(items) || items.length === 0 ? (
           <p className="text-gray-600 text-lg">Your bag is empty.</p>
         ) : (
           <div className="space-y-4">
             {items.map((it) => {
+              // build image URL consistently
               const img = urlFor(it.image);
-              // create a stable key that includes customSize (if present) so React can differentiate lines
-              const customSig = it.customSize ? JSON.stringify(it.customSize) : "nostyle";
-              const itemKey = `${it.product}-${it.size || "NOSIZE"}-${customSig}`;
+
+              // Add customSize JSON into the key so React can distinguish different custom entries
+              const customKey = it.customSize ? JSON.stringify(it.customSize) : "";
 
               return (
                 <div
-                  key={itemKey}
+                  key={`${it.product}-${it.size || "NOSIZE"}-${customKey}`}
                   className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-amber-100 bg-white rounded-2xl p-3 sm:p-4 shadow-sm transition-all duration-300 hover:shadow-lg"
                 >
                   {/* Remove */}
                   <button
-                    onClick={() => removeItem(it.product, it.size, it.customSize)}
+                    onClick={() => removeItem(it.product, it.size)}
                     className="absolute top-2 right-3 text-gray-400 hover:text-red-600 text-lg transition-colors"
                     aria-label="Remove from cart"
                   >
@@ -141,28 +141,30 @@ export default function CartPage() {
                       <div className="font-semibold text-lg text-gray-900 leading-tight truncate">
                         {it.name}
                       </div>
-                      {it.size && (
+
+                      {/* Show custom measurements if present, else show size */}
+                      {it.customSize ? (
+                        <div className="text-sm text-gray-700 mt-1">
+                          <div className="font-medium">Custom measurements:</div>
+                          <div className="mt-1 text-gray-600 text-sm">
+                            {it.customSize.bust ? `Bust: ${it.customSize.bust}"` : null}
+                            {it.customSize.waist ? `  • Waist: ${it.customSize.waist}"` : null}
+                            {it.customSize.hips ? `  • Hips: ${it.customSize.hips}"` : null}
+                            {it.customSize.shoulder ? `  • Shoulder: ${it.customSize.shoulder}"` : null}
+                          </div>
+                        </div>
+                      ) : it.size ? (
                         <div className="text-sm text-gray-600 mt-1">
                           Size: <span className="font-medium">{it.size}</span>
                         </div>
-                      )}
-
-                      {/* show custom measurements if provided */}
-                      {it.customSize && (
-                        <div className="mt-2 text-sm text-gray-700">
-                          <div className="font-medium text-sm">Custom measurements</div>
-                          <div className="text-xs text-gray-600">
-                            Bust: {it.customSize.bust}" • Waist: {it.customSize.waist}" • Hips: {it.customSize.hips}" • Shoulder: {it.customSize.shoulder}"
-                          </div>
-                        </div>
-                      )}
+                      ) : null}
 
                       <div className="mt-2 inline-flex items-center gap-2">
                         <span className="text-sm text-gray-500">Qty</span>
                         <div className="flex items-center bg-white border border-gray-300 rounded-full shadow-sm overflow-hidden">
                           <button
                             onClick={() =>
-                              setQty(it.product, it.size, Math.max(it.qty - 1, 1), it.customSize)
+                              setQty(it.product, it.size, Math.max(it.qty - 1, 1))
                             }
                             className="w-8 h-8 grid place-items-center hover:bg-gray-100"
                             aria-label="Decrease quantity"
@@ -173,7 +175,7 @@ export default function CartPage() {
                             {it.qty}
                           </span>
                           <button
-                            onClick={() => setQty(it.product, it.size, it.qty + 1, it.customSize)}
+                            onClick={() => setQty(it.product, it.size, it.qty + 1)}
                             className="w-8 h-8 grid place-items-center hover:bg-gray-100"
                             aria-label="Increase quantity"
                           >
@@ -263,7 +265,6 @@ export default function CartPage() {
   );
 }
 
-
 function Row({ label, value }) {
   return (
     <div className="flex justify-between">
@@ -272,13 +273,14 @@ function Row({ label, value }) {
     </div>
   );
 }
+
 function RecommendationCard({ product, onAdd }) {
+  // Use urlFor here so Image receives a safe/absolute URL
   const first = product.images?.[0] || product.image || "/placeholder.png";
   const img = urlFor(first);
 
   return (
     <div className="group border border-gray-100 rounded-2xl bg-white shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-      {/* Image */}
       <div className="relative w-full aspect-[2/3] overflow-hidden">
         <Image
           src={img}
@@ -289,7 +291,6 @@ function RecommendationCard({ product, onAdd }) {
         />
       </div>
 
-      {/* Content */}
       <div className="p-5 flex flex-col items-center text-center">
         <h3 className="text-lg font-semibold text-gray-900 leading-snug line-clamp-1">
           {product.name}
