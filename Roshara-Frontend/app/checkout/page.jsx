@@ -29,67 +29,42 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState(null);
   const [transactionId, setTransactionId] = useState("");
 
-  // coupons state
-  const [activeCoupons, setActiveCoupons] = useState([]); // server-provided (non-special + any allowed)
-  const [couponInput, setCouponInput] = useState(""); // the text input value
-  const [selectedCouponCode, setSelectedCouponCode] = useState(""); // the code that will be submitted
+  const [activeCoupons, setActiveCoupons] = useState([]); // only public (non-special) coupons
+  const [couponInput, setCouponInput] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
-  const inputRef = useRef(null);
 
-  // fetch active coupons on mount
+  // Wait for auth to finish initializing before redirecting
   useEffect(() => {
-    getActiveCoupons()
-      .then(setActiveCoupons)
-      .catch(() => setActiveCoupons([]));
+    if (loading) return;
+    if (!user) {
+      router.replace("/auth/login?next=/checkout");
+    }
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    getActiveCoupons().then(setActiveCoupons).catch(() => setActiveCoupons([]));
   }, []);
 
-  // close dropdown on outside click
+  // clicking outside should hide dropdown
   useEffect(() => {
-    function onDocClick(e) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target) &&
-        inputRef.current &&
-        !inputRef.current.contains(e.target)
-      ) {
+    function onDoc(e) {
+      if (!dropdownRef.current) return;
+      if (!dropdownRef.current.contains(e.target)) {
         setShowDropdown(false);
       }
     }
-    document.addEventListener("click", onDocClick);
-    return () => document.removeEventListener("click", onDocClick);
+    document.addEventListener("click", onDoc);
+    return () => document.removeEventListener("click", onDoc);
   }, []);
 
-  // Helper: visible coupons for dropdown — explicitly exclude special coupons
-  const nonSpecialCoupons = useMemo(
-    () => (Array.isArray(activeCoupons) ? activeCoupons.filter((c) => !c.special) : []),
-    [activeCoupons]
-  );
-
-  // If user types a code that exactly matches an active coupon (non-special) set it as selected
-  useEffect(() => {
-    if (!couponInput || couponInput.trim() === "") {
-      setSelectedCouponCode("");
-      return;
-    }
-    const match = nonSpecialCoupons.find(
-      (c) => (c.code || "").toUpperCase() === couponInput.trim().toUpperCase()
-    );
-    if (match) setSelectedCouponCode(match.code);
-    else setSelectedCouponCode(""); // typed a code not in the non-special list (could be a special code)
-  }, [couponInput, nonSpecialCoupons]);
-
-  // selectedCoupon: only available if the code exists in activeCoupons (non-special list)
+  // selectedCoupon derived by matching input against active coupons (or typed special coupon).
   const selectedCoupon = useMemo(() => {
-    if (!selectedCouponCode) return null;
-    return (
-      nonSpecialCoupons.find(
-        (c) => (c.code || "").toUpperCase() === selectedCouponCode.toUpperCase()
-      ) || null
-    );
-  }, [nonSpecialCoupons, selectedCouponCode]);
+    if (!couponInput) return null;
+    const code = couponInput.trim().toUpperCase();
+    return activeCoupons.find((c) => (c.code || "").toUpperCase() === code) || null;
+  }, [activeCoupons, couponInput]);
 
-  // Estimate pricing
   const estimated = useMemo(() => {
     const subtotal = Number(itemsPrice || 0);
 
@@ -103,7 +78,9 @@ export default function CheckoutPage() {
 
       if (meetsMin && notExpired && isActive) {
         if (selectedCoupon.discountType === "percentage") {
-          discount = Math.round((subtotal * Number(selectedCoupon.value)) / 100);
+          discount = Math.round(
+            (subtotal * Number(selectedCoupon.value)) / 100
+          );
         } else {
           discount = Number(selectedCoupon.value || 0);
         }
@@ -121,14 +98,6 @@ export default function CheckoutPage() {
   }, [itemsPrice, selectedCoupon, paymentMethod]);
 
   const getPid = (it) => it?.product || it?._id || it?.id;
-
-  // Guard: wait for auth bootstrapping and redirect if not logged
-  useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      router.replace("/auth/login?next=/checkout");
-    }
-  }, [user, loading, router]);
 
   const handlePlaceOrder = async () => {
     setError("");
@@ -150,8 +119,6 @@ export default function CheckoutPage() {
         quantity: it.qty ?? it.quantity ?? 1,
         price: it.price,
         size: it.size,
-        // keep any custom measurements in the cart item if present (CartContext already stores them)
-        customSize: it.customSize || undefined,
       }));
 
       const payload = {
@@ -160,8 +127,7 @@ export default function CheckoutPage() {
         paymentMethod,
         taxPrice: 0,
         shippingPrice: 0,
-        // submit whatever code user supplied (either from dropdown selection or typed special code)
-        couponCode: (couponInput && couponInput.trim()) ? couponInput.trim().toUpperCase() : null,
+        couponCode: couponInput ? couponInput.trim().toUpperCase() : null,
       };
 
       const order = await createOrder(token, payload);
@@ -197,41 +163,6 @@ export default function CheckoutPage() {
 
   const keyFor = (it) => getPid(it) || `${it.name}-${Math.random()}`;
 
-  // UX helpers for coupon input/dropdown
-  const filteredDropdown = useMemo(() => {
-    const q = (couponInput || "").trim().toLowerCase();
-    if (!q) return nonSpecialCoupons;
-    return nonSpecialCoupons.filter((c) => (c.code || "").toLowerCase().includes(q));
-  }, [nonSpecialCoupons, couponInput]);
-
-  // When a dropdown item is clicked
-  const pickCoupon = (c) => {
-    setCouponInput(c.code || "");
-    setSelectedCouponCode(c.code || "");
-    setShowDropdown(false);
-    // focus out
-    inputRef.current?.blur();
-  };
-
-  // If user presses Enter in coupon input, set selection if matches, otherwise keep input (special)
-  const onCouponKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (selectedCouponCode) {
-        // already matched
-        setCouponInput(selectedCouponCode);
-      }
-      setShowDropdown(false);
-      inputRef.current?.blur();
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      // focus first dropdown item if present
-      const first = dropdownRef.current?.querySelector("button[data-coupon-index='0']");
-      first?.focus();
-    }
-  };
-
-  // while auth bootstrapping
   if (loading) return <div className="p-6">Loading…</div>;
   if (!user) return null;
 
@@ -247,7 +178,6 @@ export default function CheckoutPage() {
           <div className="space-y-4">
             {items.map((it) => (
               <div key={keyFor(it)} className="border rounded p-4 flex gap-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={it.image || "/placeholder.png"}
                   alt={it.name}
@@ -256,11 +186,8 @@ export default function CheckoutPage() {
                 <div className="flex-1">
                   <div className="font-medium">{it.name}</div>
                   <div className="text-sm text-gray-600">₹{it.price}</div>
-                  {it.size && <div className="text-sm text-gray-600">Size: {it.size}</div>}
-                  {it.customSize && (
-                    <div className="text-sm text-gray-600 mt-1">
-                      Custom: {it.customSize.bust ? `Bust ${it.customSize.bust}" ` : ""}{it.customSize.waist ? `Waist ${it.customSize.waist}" ` : ""}{it.customSize.hips ? `Hips ${it.customSize.hips}" ` : ""}{it.customSize.shoulder ? `Shoulder ${it.customSize.shoulder}"` : ""}
-                    </div>
+                  {it.size && (
+                    <div className="text-sm text-gray-600">Size: {it.size}</div>
                   )}
                   <div className="mt-2 flex items-center gap-2">
                     <label className="text-sm">Qty</label>
@@ -268,10 +195,15 @@ export default function CheckoutPage() {
                       type="number"
                       min="1"
                       value={it.qty}
-                      onChange={(e) => setQty(getPid(it), Number(e.target.value))}
+                      onChange={(e) =>
+                        setQty(getPid(it), Number(e.target.value))
+                      }
                       className="w-16 border rounded px-2 py-1"
                     />
-                    <button onClick={() => removeItem(getPid(it))} className="text-red-600 text-sm ml-3">
+                    <button
+                      onClick={() => removeItem(getPid(it))}
+                      className="text-red-600 text-sm ml-3"
+                    >
                       Remove
                     </button>
                   </div>
@@ -289,25 +221,33 @@ export default function CheckoutPage() {
               placeholder="Address"
               className="border rounded px-3 py-2"
               value={address.address}
-              onChange={(e) => setAddress({ ...address, address: e.target.value })}
+              onChange={(e) =>
+                setAddress({ ...address, address: e.target.value })
+              }
             />
             <input
               placeholder="City"
               className="border rounded px-3 py-2"
               value={address.city}
-              onChange={(e) => setAddress({ ...address, city: e.target.value })}
+              onChange={(e) =>
+                setAddress({ ...address, city: e.target.value })
+              }
             />
             <input
               placeholder="PIN Code"
               className="border rounded px-3 py-2"
               value={address.postalCode}
-              onChange={(e) => setAddress({ ...address, postalCode: e.target.value })}
+              onChange={(e) =>
+                setAddress({ ...address, postalCode: e.target.value })
+              }
             />
             <input
               placeholder="Country"
               className="border rounded px-3 py-2"
               value={address.country}
-              onChange={(e) => setAddress({ ...address, country: e.target.value })}
+              onChange={(e) =>
+                setAddress({ ...address, country: e.target.value })
+              }
             />
           </div>
         </div>
@@ -317,76 +257,68 @@ export default function CheckoutPage() {
           <h3 className="font-semibold mb-2">Payment Method</h3>
           <div className="space-y-2">
             <label className="flex items-center gap-2">
-              <input type="radio" name="pay" checked={paymentMethod === "cod"} onChange={() => setPaymentMethod("cod")} />
+              <input
+                type="radio"
+                name="pay"
+                checked={paymentMethod === "cod"}
+                onChange={() => setPaymentMethod("cod")}
+              />
               <span>Cash on Delivery (COD) — ₹90 COD fee applies</span>
             </label>
             <label className="flex items-center gap-2">
-              <input type="radio" name="pay" checked={paymentMethod === "upi"} onChange={() => setPaymentMethod("upi")} />
+              <input
+                type="radio"
+                name="pay"
+                checked={paymentMethod === "upi"}
+                onChange={() => setPaymentMethod("upi")}
+              />
               <span>UPI (Google Pay / PhonePe / Paytm)</span>
             </label>
           </div>
         </div>
 
-        {/* Coupon input + dropdown */}
-        <div className="mt-6 relative">
+        {/* Coupon (input + dropdown of public coupons) */}
+        <div className="mt-6" ref={dropdownRef}>
           <label className="font-medium block mb-1">Apply Coupon</label>
-
-          {/* Input */}
-          <div className="relative max-w-lg">
+          <div className="relative">
             <input
-              ref={inputRef}
               type="text"
-              placeholder="Type coupon code (or click to pick)"
-              value={couponInput}
-              onChange={(e) => {
-                setCouponInput(e.target.value);
-                setShowDropdown(true);
-              }}
-              onFocus={() => setShowDropdown(true)}
-              onKeyDown={onCouponKeyDown}
+              placeholder="Enter coupon code or click to see available coupons"
               className="border rounded px-3 py-2 w-full"
+              value={couponInput}
+              onChange={(e) => setCouponInput(e.target.value)}
+              onFocus={() => setShowDropdown(true)}
             />
 
-            {/* dropdown list of non-special coupons */}
-            {showDropdown && filteredDropdown.length > 0 && (
-              <div
-                ref={dropdownRef}
-                className="absolute z-50 mt-1 w-full bg-white border rounded shadow max-h-56 overflow-auto"
-                role="listbox"
-              >
-                {filteredDropdown.map((c, i) => (
+            {showDropdown && activeCoupons.length > 0 && (
+              <div className="absolute left-0 right-0 mt-1 bg-white border rounded shadow z-40 max-h-44 overflow-auto">
+                {activeCoupons.map((c) => (
                   <button
-                    key={c._id || `${c.code}-${i}`}
-                    data-coupon-index={i}
-                    onClick={() => pickCoupon(c)}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-100 focus:bg-gray-100"
+                    key={c._id}
+                    onClick={() => {
+                      setCouponInput(c.code || "");
+                      setShowDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-gray-50"
+                    title={c.description || ""}
                   >
                     <div className="flex justify-between">
-                      <div className="font-medium">{c.code}</div>
-                      <div className="text-sm text-gray-600">
+                      <span className="font-medium">{c.code}</span>
+                      <span className="text-sm text-gray-600">
                         {c.discountType === "percentage" ? `${c.value}%` : `₹${c.value}`}
-                      </div>
+                      </span>
                     </div>
-                    <div className="text-xs text-gray-500">
-                      {Number(c.minOrderAmount || 0) > 0 ? `min ₹${c.minOrderAmount}` : "no min"} {c.expiryDate ? ` • expires ${new Date(c.expiryDate).toLocaleDateString()}` : ""}
-                    </div>
+                    {Number(c.minOrderAmount) > 0 && (
+                      <div className="text-xs text-gray-500">min ₹{c.minOrderAmount}</div>
+                    )}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Info about typed code */}
-          <div className="mt-2 text-sm">
-            {selectedCoupon ? (
-              <div className="text-sm text-green-700">Applied: {selectedCoupon.code} — {selectedCoupon.discountType === "percentage" ? `${selectedCoupon.value}% off` : `₹${selectedCoupon.value} off`}</div>
-            ) : couponInput.trim() !== "" ? (
-              <div className="text-sm text-gray-600">
-                Code <span className="font-medium">{couponInput.trim().toUpperCase()}</span> will be validated at checkout (special coupon or private code).
-              </div>
-            ) : (
-              <div className="text-sm text-gray-500">Or pick a coupon from the list above.</div>
-            )}
+          <div className="mt-2 text-sm text-gray-600">
+            Tip: If you received a special influencer coupon, type it above. Public coupons are shown in the list.
           </div>
         </div>
 
@@ -405,16 +337,44 @@ export default function CheckoutPage() {
           <div className="mt-8 border rounded-xl p-6 bg-gray-50 shadow-sm max-w-md">
             <h4 className="font-semibold text-lg mb-4 text-center">Pay via UPI</h4>
             <div className="flex flex-col items-center">
-              <Image src="/static/upi-qr.png" alt="UPI QR Code" width={220} height={220} priority className="rounded-xl border mb-4" />
+              <Image
+                src="/static/upi-qr.png"
+                alt="UPI QR Code"
+                width={220}
+                height={220}
+                priority
+                className="rounded-xl border mb-4"
+              />
+
               <div className="text-center text-gray-700 mb-2">
-                <p className="font-medium"><span className="text-gray-600">UPI ID: 9324103174@kotak811</span></p>
-                <p><span className="text-gray-600">Amount:</span> ₹{estimated.total}</p>
+                <p className="font-medium">
+                  <span className="text-gray-600">UPI ID: 9324103174@kotak811</span>{" "}
+                </p>
+                <p>
+                  <span className="text-gray-600">Amount:</span> ₹
+                  {estimated.total}
+                </p>
               </div>
+
               <div className="mt-4 w-full">
-                <label className="text-sm font-medium block mb-1">Enter UPI Transaction ID</label>
-                <input type="text" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} placeholder="Example: T1234ABCD567" className="w-full border rounded-lg px-3 py-2" />
+                <label className="text-sm font-medium block mb-1">
+                  Enter UPI Transaction ID
+                </label>
+                <input
+                  type="text"
+                  value={transactionId}
+                  onChange={(e) => setTransactionId(e.target.value)}
+                  placeholder="Example: T1234ABCD567"
+                  className="w-full border rounded-lg px-3 py-2"
+                />
               </div>
-              <button onClick={handleMarkPaid} className="mt-5 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">I’ve Paid</button>
+
+              <button
+                onClick={handleMarkPaid}
+                className="mt-5 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition"
+              >
+                I’ve Paid
+              </button>
             </div>
           </div>
         )}
@@ -436,7 +396,9 @@ export default function CheckoutPage() {
 
         {estimated.discount > 0 && (
           <div className="flex justify-between text-sm mt-1 text-green-700">
-            <span>Discount{selectedCoupon ? ` (${selectedCoupon.code})` : ""}</span>
+            <span>
+              Discount{selectedCoupon ? ` (${selectedCoupon.code})` : ""}
+            </span>
             <span>-₹{estimated.discount}</span>
           </div>
         )}

@@ -36,26 +36,32 @@ const couponSchema = new mongoose.Schema(
     },
     expiryDate: {
       type: Date,
+      default: null,
     },
     active: {
       type: Boolean,
       default: true,
     },
 
-    // --- New fields for special/influencer coupons ---
     special: {
       type: Boolean,
-      default: false, // true for influencer/private coupons
+      default: false, 
     },
     influencer: {
       type: String,
-      default: "", // store influencer identifier (username or userId)
+      default: null, 
     },
     usedCount: {
       type: Number,
       default: 0,
       min: 0,
     },
+    usageLimit: {
+      type: Number,
+      default: 0, // 0 = unlimited
+      min: 0,
+    },
+   
   },
   { timestamps: true }
 );

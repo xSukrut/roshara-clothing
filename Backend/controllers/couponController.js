@@ -1,13 +1,13 @@
 // controllers/couponController.js
 import Coupon from "../models/couponModel.js";
 
-
+// PUBLIC: active coupons for checkout (exclude special coupons)
 export const getActiveCoupons = async (req, res) => {
   try {
     const now = new Date();
     const coupons = await Coupon.find({
       active: true,
-      special: { $ne: true }, // exclude special coupons from public list
+      special: { $ne: true }, // exclude influencer/special coupons for the public checkout list
       $or: [
         { expiryDate: { $exists: false } },
         { expiryDate: null },
@@ -22,7 +22,7 @@ export const getActiveCoupons = async (req, res) => {
   }
 };
 
-// Admin: list all (including special)
+// ADMIN: list all
 export const getAllCoupons = async (req, res) => {
   try {
     const coupons = await Coupon.find({}).sort({ createdAt: -1 });
@@ -33,7 +33,7 @@ export const getAllCoupons = async (req, res) => {
   }
 };
 
-// Admin: create
+// ADMIN: create
 export const createCoupon = async (req, res) => {
   try {
     let {
@@ -45,9 +45,10 @@ export const createCoupon = async (req, res) => {
       maxDiscount = 0,
       expiryDate,
       active = true,
-      // new fields
+      // new fields:
       special = false,
-      influencer = "",
+      influencer = null,
+      usageLimit = 0,
     } = req.body;
 
     if (!code || value === undefined || value === null) {
@@ -71,9 +72,9 @@ export const createCoupon = async (req, res) => {
       maxDiscount: Number(maxDiscount) || 0,
       expiryDate: expiryDate ? new Date(expiryDate) : null,
       active: !!active,
-      // new fields
       special: !!special,
-      influencer: influencer ? String(influencer).trim() : "",
+      influencer: influencer ? String(influencer) : null,
+      usageLimit: Number(usageLimit) || 0,
       usedCount: 0,
     });
 
@@ -102,9 +103,10 @@ export const updateCoupon = async (req, res) => {
       "maxDiscount",
       "expiryDate",
       "active",
-      // new fields
+      // new:
       "special",
       "influencer",
+      "usageLimit",
       "usedCount",
     ];
 
@@ -113,12 +115,14 @@ export const updateCoupon = async (req, res) => {
         if (f === "code") c.code = String(req.body[f]).toUpperCase().trim();
         else if (f === "discountType")
           c.discountType = req.body[f] === "amount" ? "amount" : "percentage";
-        else if (["value", "minOrderAmount", "maxDiscount", "usedCount"].includes(f))
+        else if (["value", "minOrderAmount", "maxDiscount", "usageLimit", "usedCount"].includes(f))
           c[f] = Number(req.body[f]) || 0;
         else if (f === "expiryDate")
           c.expiryDate = req.body[f] ? new Date(req.body[f]) : null;
         else if (f === "active" || f === "special")
           c[f] = !!req.body[f];
+        else if (f === "influencer")
+          c.influencer = req.body[f] ? String(req.body[f]) : null;
         else c[f] = req.body[f];
       }
     }
@@ -133,7 +137,8 @@ export const updateCoupon = async (req, res) => {
     res.status(500).json({ message: "Failed to update coupon" });
   }
 };
-// Admin: delete
+
+// ADMIN: delete
 export const deleteCoupon = async (req, res) => {
   try {
     const c = await Coupon.findById(req.params.id);
@@ -145,6 +150,7 @@ export const deleteCoupon = async (req, res) => {
     res.status(500).json({ message: "Failed to delete coupon" });
   }
 };
+
 
 export const redeemCoupon = async (req, res) => {
   try {

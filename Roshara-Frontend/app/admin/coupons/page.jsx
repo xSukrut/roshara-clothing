@@ -19,8 +19,10 @@ const EMPTY = {
   minOrderAmount: "",
   expiryDate: "",
   active: true,
+  // new:
   special: false,
   influencer: "",
+  usageLimit: "",
 };
 
 export default function AdminCouponsPage() {
@@ -73,8 +75,10 @@ export default function AdminCouponsPage() {
       minOrderAmount: Number(f.minOrderAmount || 0),
       expiryDate: f.expiryDate ? new Date(f.expiryDate).toISOString() : null,
       active: !!f.active,
+      // new:
       special: !!f.special,
-      influencer: f.influencer || null,
+      influencer: f.influencer ? String(f.influencer).trim() : null,
+      usageLimit: Number(f.usageLimit || 0),
     };
   }
 
@@ -112,6 +116,7 @@ export default function AdminCouponsPage() {
       active: !!c.active,
       special: !!c.special,
       influencer: c.influencer || "",
+      usageLimit: c.usageLimit ?? "",
     });
   }
 
@@ -199,39 +204,49 @@ export default function AdminCouponsPage() {
             />
           </div>
 
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2">
-              <input
-                id="active"
-                name="active"
-                type="checkbox"
-                checked={form.active}
-                onChange={onChange}
-              />
-              <span>Active</span>
-            </label>
+          <div>
+            <label className="block text-sm mb-1">Usage Limit (0 = unlimited)</label>
+            <input
+              name="usageLimit"
+              type="number"
+              min="0"
+              value={form.usageLimit}
+              onChange={onChange}
+              className="border rounded px-3 py-2 w-full"
+            />
+          </div>
 
-            <label className="flex items-center gap-2">
-              <input
-                id="special"
-                name="special"
-                type="checkbox"
-                checked={form.special}
-                onChange={onChange}
-              />
-              <span>Special coupon</span>
-            </label>
+          <div className="flex items-center gap-2">
+            <input
+              id="active"
+              name="active"
+              type="checkbox"
+              checked={form.active}
+              onChange={onChange}
+            />
+            <label htmlFor="active">Active</label>
+          </div>
 
-            <div className="flex-1">
-              <label className="block text-sm mb-1">Influencer (user id)</label>
-              <input
-                name="influencer"
-                value={form.influencer}
-                onChange={onChange}
-                placeholder="influencer user id (optional)"
-                className="border rounded px-3 py-2 w-full"
-              />
-            </div>
+          <div className="flex items-center gap-2">
+            <input
+              id="special"
+              name="special"
+              type="checkbox"
+              checked={form.special}
+              onChange={onChange}
+            />
+            <label htmlFor="special">Special coupon</label>
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1">Influencer (user id / handle)</label>
+            <input
+              name="influencer"
+              value={form.influencer}
+              onChange={onChange}
+              placeholder="@influencer or userId"
+              className="border rounded px-3 py-2 w-full"
+            />
           </div>
         </div>
 
@@ -284,8 +299,8 @@ export default function AdminCouponsPage() {
                 <Td>{c.expiryDate ? new Date(c.expiryDate).toLocaleDateString() : "-"}</Td>
                 <Td>{c.active ? "Yes" : "No"}</Td>
                 <Td>{c.special ? "Yes" : "No"}</Td>
-                <Td>{c.influencer ? c.influencer : "-"}</Td>
-                <Td>{c.specialUseCount ?? 0}</Td>
+                <Td>{c.influencer || "-"}</Td>
+                <Td>{c.usedCount ?? 0}</Td>
                 <Td>
                   <div className="flex gap-2">
                     <button
