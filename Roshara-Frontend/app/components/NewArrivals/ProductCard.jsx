@@ -62,6 +62,15 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
 
+  // Custom size mode + inputs
+  const [customMode, setCustomMode] = useState(false);
+  const [customSizes, setCustomSizes] = useState({
+    bust: "",
+    waist: "",
+    hips: "",
+    shoulder: "",
+  });
+
   // Build image list from product payload
   const rawImages = Array.isArray(product?.images) ? product.images : [];
   let images = rawImages
@@ -100,12 +109,70 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       setSelectedSize((prev) => prev ?? sizeOptions[0]);
     } else {
       setSelectedSize(null);
+      setCustomMode(false);
+      setCustomSizes({ bust: "", waist: "", hips: "", shoulder: "" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showQuickAdd, product?._id]);
 
   const heightClass = size === "lg" ? "h-[420px] md:h-[460px]" : "h-[350px]";
   const fav = inWishlist(product._id);
+
+  // helper to update custom input
+  const setCustomField = (field, value) =>
+    setCustomSizes((p) => ({ ...p, [field]: value }));
+
+  // validate custom sizes: simple numeric > 0
+  const validateCustomSizes = () => {
+    const { bust, waist, hips, shoulder } = customSizes;
+    const vals = [bust, waist, hips, shoulder];
+    return vals.every((v) => v !== "" && !isNaN(Number(v)) && Number(v) > 0);
+  };
+
+  const handleAdd = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+
+    // if custom mode -> require valid custom inputs
+    if (customMode) {
+      if (!validateCustomSizes()) {
+        // a simple UI cue — could replace with toast
+        alert("Please enter valid measurements for all custom fields (in inches).");
+        return;
+      }
+      addItem({
+        product: product._id,
+        name: product.name,
+        price: product.price,
+        image: images[0],
+        size: "Custom",
+        customSize: {
+          bust: String(customSizes.bust).trim(),
+          waist: String(customSizes.waist).trim(),
+          hips: String(customSizes.hips).trim(),
+          shoulder: String(customSizes.shoulder).trim(),
+        },
+      });
+      openMiniCart?.();
+      setShowQuickAdd(false);
+      return;
+    }
+
+    // normal size path
+    if (!selectedSize) {
+      alert("Please select a size.");
+      return;
+    }
+    addItem({
+      product: product._id,
+      name: product.name,
+      price: product.price,
+      image: images[0],
+      size: selectedSize,
+    });
+    openMiniCart?.();
+    setShowQuickAdd(false);
+  };
 
   return (
     <Link
@@ -114,7 +181,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => {
         setHovering(false);
-        // close quick add when leaving card (optional)
+        // optionally keep quick add open until user closes it
         // setShowQuickAdd(false);
       }}
       aria-label={`Open ${product.name}`}
@@ -196,14 +263,14 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       {/* Quick Add */}
       {showQuickAdd && (
         <div
-          className="absolute top-0 right-0 w-56 bg-white shadow-xl rounded p-4 z-50"
+          className="absolute top-0 right-0 w-72 bg-white shadow-xl rounded p-4 z-50"
           onClick={(e) => {
             // Ensure clicks inside the quick add don't navigate
             e.preventDefault();
             e.stopPropagation();
           }}
         >
-          <div className="relative w-full h-32 mb-3">
+          <div className="relative w-full h-28 mb-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={images[0]}
@@ -211,48 +278,111 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
               className="w-full h-full object-cover rounded"
               onError={(e) => (e.currentTarget.src = "/placeholder.png")}
             />
-            <div className="absolute inset-0 bg-blue-200/30 rounded" />
+            <div className="absolute inset-0 bg-blue-200/10 rounded" />
           </div>
 
           <div className="mb-3">
-            <p className="text-sm font-semibold mb-1">Select Size</p>
-            <div className="flex gap-2 flex-wrap">
-              {sizeOptions.map((s) => (
-                <button
-                  key={s}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setSelectedSize(s);
-                  }}
-                  className={`border rounded-md py-1 px-2 text-sm transition-all ${
-                    selectedSize === s
-                      ? "bg-black text-white border-black"
-                      : "border-gray-300 text-gray-700 hover:border-black"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+            <p className="text-sm font-semibold mb-2 flex items-center justify-between">
+              <span>Select Size</span>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCustomMode((v) => !v);
+                }}
+                className={`text-sm px-2 py-1 rounded border ${
+                  customMode ? "bg-black text-white border-black" : "bg-white"
+                }`}
+                title="Custom measurements"
+              >
+                {customMode ? "Standard" : "Custom"}
+              </button>
+            </p>
+
+            {!customMode ? (
+              <div className="flex gap-2 flex-wrap">
+                {sizeOptions.map((s) => (
+                  <button
+                    key={s}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSelectedSize(s);
+                    }}
+                    className={`border rounded-md py-1 px-2 text-sm transition-all ${
+                      selectedSize === s
+                        ? "bg-black text-white border-black"
+                        : "border-gray-300 text-gray-700 hover:border-black"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-gray-600">Bust (in)</label>
+                  <input
+                    value={customSizes.bust}
+                    onChange={(e) => setCustomField("bust", e.target.value)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className="w-full border rounded px-2 py-1 text-sm"
+                    placeholder="e.g. 34"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-600">Waist (in)</label>
+                  <input
+                    value={customSizes.waist}
+                    onChange={(e) => setCustomField("waist", e.target.value)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className="w-full border rounded px-2 py-1 text-sm"
+                    placeholder="e.g. 26"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-600">Hips (in)</label>
+                  <input
+                    value={customSizes.hips}
+                    onChange={(e) => setCustomField("hips", e.target.value)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className="w-full border rounded px-2 py-1 text-sm"
+                    placeholder="e.g. 36"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-600">Shoulder (in)</label>
+                  <input
+                    value={customSizes.shoulder}
+                    onChange={(e) => setCustomField("shoulder", e.target.value)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className="w-full border rounded px-2 py-1 text-sm"
+                    placeholder="e.g. 14"
+                  />
+                </div>
+                <div className="col-span-2 text-xs text-gray-500">
+                  Enter measurements in inches. Example: <em>34</em> or <em>34.5</em>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">
             <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (!selectedSize) return;
-                addItem({
-                  product: product._id,
-                  name: product.name,
-                  price: product.price,
-                  image: images[0],
-                  size: selectedSize,
-                });
-                openMiniCart?.();
-                setShowQuickAdd(false);
-              }}
+              onClick={handleAdd}
               className="flex-1 bg-black text-white py-2 rounded"
             >
               Add
@@ -262,6 +392,8 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
                 e.preventDefault();
                 e.stopPropagation();
                 setShowQuickAdd(false);
+                setCustomMode(false);
+                setCustomSizes({ bust: "", waist: "", hips: "", shoulder: "" });
               }}
               className="flex-1 border border-gray-400 py-2 rounded"
             >
