@@ -9,11 +9,11 @@ import { useAuth } from "@context/AuthContext";
 import { useCart } from "@context/CartContext";
 
 import { createOrder, submitUpiProof } from "@services/orderService";
-import { getActiveCoupons } from "@services/couponService";
+import { getActiveCoupons, redeemCoupon } from "@services/couponService";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { user, token, loading } = useAuth();              // ⬅️ include loading
+  const { user, token, loading } = useAuth(); // ⬅️ include loading
   const { items, itemsPrice, setQty, removeItem, clear } = useCart();
 
   const [address, setAddress] = useState({
@@ -34,7 +34,7 @@ export default function CheckoutPage() {
 
   // ⬇️ Wait for auth to finish initializing before redirecting
   useEffect(() => {
-    if (loading) return;                       // wait
+    if (loading) return; // wait
     if (!user) {
       router.replace("/auth/login?next=/checkout");
     }
@@ -66,9 +66,7 @@ export default function CheckoutPage() {
 
       if (meetsMin && notExpired && isActive) {
         if (selectedCoupon.discountType === "percentage") {
-          discount = Math.round(
-            (subtotal * Number(selectedCoupon.value)) / 100
-          );
+          discount = Math.round((subtotal * Number(selectedCoupon.value)) / 100);
         } else {
           discount = Number(selectedCoupon.value || 0);
         }
@@ -101,6 +99,22 @@ export default function CheckoutPage() {
 
     setPlacing(true);
     try {
+      // If a coupon code is selected, validate/redeem it first (protected API)
+      if (selectedCouponCode) {
+        try {
+          // redeemCoupon will throw if invalid / not allowed
+          await redeemCoupon(token, selectedCouponCode);
+        } catch (redeemErr) {
+          const msg =
+            redeemErr?.response?.data?.message ||
+            redeemErr?.message ||
+            "Coupon validation failed";
+          setError(msg);
+          setPlacing(false);
+          return;
+        }
+      }
+
       const orderItems = items.map((it) => ({
         product: getPid(it),
         name: it.name,
@@ -185,9 +199,7 @@ export default function CheckoutPage() {
                       type="number"
                       min="1"
                       value={it.qty}
-                      onChange={(e) =>
-                        setQty(getPid(it), Number(e.target.value))
-                      }
+                      onChange={(e) => setQty(getPid(it), Number(e.target.value))}
                       className="w-16 border rounded px-2 py-1"
                     />
                     <button
@@ -211,33 +223,25 @@ export default function CheckoutPage() {
               placeholder="Address"
               className="border rounded px-3 py-2"
               value={address.address}
-              onChange={(e) =>
-                setAddress({ ...address, address: e.target.value })
-              }
+              onChange={(e) => setAddress({ ...address, address: e.target.value })}
             />
             <input
               placeholder="City"
               className="border rounded px-3 py-2"
               value={address.city}
-              onChange={(e) =>
-                setAddress({ ...address, city: e.target.value })
-              }
+              onChange={(e) => setAddress({ ...address, city: e.target.value })}
             />
             <input
               placeholder="PIN Code"
               className="border rounded px-3 py-2"
               value={address.postalCode}
-              onChange={(e) =>
-                setAddress({ ...address, postalCode: e.target.value })
-              }
+              onChange={(e) => setAddress({ ...address, postalCode: e.target.value })}
             />
             <input
               placeholder="Country"
               className="border rounded px-3 py-2"
               value={address.country}
-              onChange={(e) =>
-                setAddress({ ...address, country: e.target.value })
-              }
+              onChange={(e) => setAddress({ ...address, country: e.target.value })}
             />
           </div>
         </div>
@@ -279,12 +283,8 @@ export default function CheckoutPage() {
             {activeCoupons.map((c) => (
               <option key={c._id} value={c.code}>
                 {c.code} —{" "}
-                {c.discountType === "percentage"
-                  ? `${c.value}% off`
-                  : `₹${c.value} off`}
-                {Number(c?.minOrderAmount || 0) > 0
-                  ? ` (min ₹${c.minOrderAmount})`
-                  : ""}
+                {c.discountType === "percentage" ? `${c.value}% off` : `₹${c.value} off`}
+                {Number(c?.minOrderAmount || 0) > 0 ? ` (min ₹${c.minOrderAmount})` : ""}
               </option>
             ))}
           </select>
@@ -306,13 +306,13 @@ export default function CheckoutPage() {
             <h4 className="font-semibold text-lg mb-4 text-center">Pay via UPI</h4>
             <div className="flex flex-col items-center">
               <Image
-  src="/static/upi-qr.png"
-  alt="UPI QR Code"
-  width={220}
-  height={220}
-  priority
-  className="rounded-xl border mb-4"
-/>
+                src="/static/upi-qr.png"
+                alt="UPI QR Code"
+                width={220}
+                height={220}
+                priority
+                className="rounded-xl border mb-4"
+              />
 
               <div className="text-center text-gray-700 mb-2">
                 <p className="font-medium">
@@ -320,8 +320,7 @@ export default function CheckoutPage() {
                   <b></b>
                 </p>
                 <p>
-                  <span className="text-gray-600">Amount:</span> ₹
-                  {estimated.total}
+                  <span className="text-gray-600">Amount:</span> ₹{estimated.total}
                 </p>
               </div>
 
@@ -365,9 +364,7 @@ export default function CheckoutPage() {
 
         {estimated.discount > 0 && (
           <div className="flex justify-between text-sm mt-1 text-green-700">
-            <span>
-              Discount{selectedCoupon ? ` (${selectedCoupon.code})` : ""}
-            </span>
+            <span>Discount{selectedCoupon ? ` (${selectedCoupon.code})` : ""}</span>
             <span>-₹{estimated.discount}</span>
           </div>
         )}

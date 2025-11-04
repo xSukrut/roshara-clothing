@@ -14,11 +14,13 @@ import {
 
 const EMPTY = {
   code: "",
-  discountType: "percentage", // "percentage" | "amount"
+  discountType: "percentage",
   value: "",
   minOrderAmount: "",
-  expiryDate: "", // yyyy-mm-dd from <input type="date">
+  expiryDate: "",
   active: true,
+  special: false,
+  influencer: "",
 };
 
 export default function AdminCouponsPage() {
@@ -31,7 +33,6 @@ export default function AdminCouponsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  // Guard: admin only
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -67,11 +68,13 @@ export default function AdminCouponsPage() {
   function toPayload(f) {
     return {
       code: (f.code || "").trim().toUpperCase(),
-      discountType: f.discountType, // "percentage" | "amount"
+      discountType: f.discountType,
       value: Number(f.value || 0),
       minOrderAmount: Number(f.minOrderAmount || 0),
       expiryDate: f.expiryDate ? new Date(f.expiryDate).toISOString() : null,
       active: !!f.active,
+      special: !!f.special,
+      influencer: f.influencer || null,
     };
   }
 
@@ -107,6 +110,8 @@ export default function AdminCouponsPage() {
       minOrderAmount: c.minOrderAmount ?? "",
       expiryDate: c.expiryDate ? new Date(c.expiryDate).toISOString().slice(0, 10) : "",
       active: !!c.active,
+      special: !!c.special,
+      influencer: c.influencer || "",
     });
   }
 
@@ -194,15 +199,39 @@ export default function AdminCouponsPage() {
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              id="active"
-              name="active"
-              type="checkbox"
-              checked={form.active}
-              onChange={onChange}
-            />
-            <label htmlFor="active">Active</label>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2">
+              <input
+                id="active"
+                name="active"
+                type="checkbox"
+                checked={form.active}
+                onChange={onChange}
+              />
+              <span>Active</span>
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                id="special"
+                name="special"
+                type="checkbox"
+                checked={form.special}
+                onChange={onChange}
+              />
+              <span>Special coupon</span>
+            </label>
+
+            <div className="flex-1">
+              <label className="block text-sm mb-1">Influencer (user id)</label>
+              <input
+                name="influencer"
+                value={form.influencer}
+                onChange={onChange}
+                placeholder="influencer user id (optional)"
+                className="border rounded px-3 py-2 w-full"
+              />
+            </div>
           </div>
         </div>
 
@@ -239,6 +268,9 @@ export default function AdminCouponsPage() {
               <Th>Min Amount</Th>
               <Th>Expiry</Th>
               <Th>Active</Th>
+              <Th>Special</Th>
+              <Th>Influencer</Th>
+              <Th>Used (special)</Th>
               <Th>Actions</Th>
             </tr>
           </thead>
@@ -251,6 +283,9 @@ export default function AdminCouponsPage() {
                 <Td>{c.minOrderAmount ? `₹${c.minOrderAmount}` : "-"}</Td>
                 <Td>{c.expiryDate ? new Date(c.expiryDate).toLocaleDateString() : "-"}</Td>
                 <Td>{c.active ? "Yes" : "No"}</Td>
+                <Td>{c.special ? "Yes" : "No"}</Td>
+                <Td>{c.influencer ? c.influencer : "-"}</Td>
+                <Td>{c.specialUseCount ?? 0}</Td>
                 <Td>
                   <div className="flex gap-2">
                     <button
@@ -271,7 +306,7 @@ export default function AdminCouponsPage() {
             ))}
             {coupons.length === 0 && (
               <tr>
-                <Td colSpan={7} className="text-center text-gray-500 py-6">
+                <Td colSpan={10} className="text-center text-gray-500 py-6">
                   No coupons yet.
                 </Td>
               </tr>

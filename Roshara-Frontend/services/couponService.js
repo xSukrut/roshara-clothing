@@ -2,8 +2,7 @@
 import axios from "axios";
 import { API_BASE_URL } from "../utils/api";
 
-// Public – used on checkout page
-
+// Public – used on checkout page (returns only non-special coupons)
 export const getActiveCoupons = async () => {
   try {
     const { data } = await axios.get(`${API_BASE_URL}/coupons/active`);
@@ -14,6 +13,7 @@ export const getActiveCoupons = async () => {
   }
 };
 
+// Admin functions...
 export const listCouponsAdmin = async (token) => {
   try {
     const { data } = await axios.get(`${API_BASE_URL}/coupons`, {
@@ -60,4 +60,28 @@ export const deleteCouponAdmin = async (token, id) => {
     console.error("deleteCouponAdmin failed:", err?.response?.data || err?.message);
     throw err;
   }
+};
+
+// Protected: redeem coupon for current user (must be logged in)
+export const redeemCoupon = async (token, code) => {
+  try {
+    const { data } = await axios.post(
+      `${API_BASE_URL}/coupons/redeem`,
+      { code },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return data;
+  } catch (err) {
+    console.error("redeemCoupon failed:", err?.response?.data || err?.message);
+    throw err;
+  }
+};
+
+export default {
+  getActiveCoupons,
+  listCouponsAdmin,
+  createCouponAdmin,
+  updateCouponAdmin,
+  deleteCouponAdmin,
+  redeemCoupon,
 };

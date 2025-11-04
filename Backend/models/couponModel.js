@@ -41,6 +41,22 @@ const couponSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    // ---- new fields for "special" influencer coupons ----
+    special: {
+      type: Boolean,
+      default: false,
+    },
+    influencer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    specialUseCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   { timestamps: true }
 );
