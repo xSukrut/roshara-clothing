@@ -4,6 +4,7 @@
 import { motion } from "framer-motion";
 import { Search, ShoppingCart, Heart } from "lucide-react";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useCart } from "../../../context/CartContext";
 import { useWishlist } from "../../../context/WishlistContext";
 import { ROSHARA_SIZES } from "../../constants/sizes";
@@ -107,10 +108,16 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const fav = inWishlist(product._id);
 
   return (
-    <div
-      className="group relative cursor-pointer"
+    <Link
+      href={`/products/${product._id}`}
+      className="group relative cursor-pointer block"
       onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
+      onMouseLeave={() => {
+        setHovering(false);
+        // close quick add when leaving card (optional)
+        // setShowQuickAdd(false);
+      }}
+      aria-label={`Open ${product.name}`}
     >
       <motion.div
         className={`relative w-full ${heightClass} overflow-hidden rounded-2xl shadow-sm`}
@@ -133,11 +140,12 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
           <button
             onClick={(e) => {
               e.preventDefault();
-              e.stopPropagation();
+              e.stopPropagation(); // IMPORTANT: prevent Link navigation
               onSearch?.(product);
             }}
             className="bg-white p-2 rounded-full shadow hover:scale-110 transition-transform"
             aria-label="Quick view"
+            title="Quick view"
           >
             <Search className="w-5 h-5 text-gray-700" />
           </button>
@@ -150,6 +158,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
             }}
             className="bg-white p-2 rounded-full shadow hover:scale-110 transition-transform"
             aria-label="Add to bag"
+            title="Quick add"
           >
             <ShoppingCart className="w-5 h-5 text-gray-700" />
           </button>
@@ -186,7 +195,14 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
 
       {/* Quick Add */}
       {showQuickAdd && (
-        <div className="absolute top-0 right-0 w-56 bg-white shadow-xl rounded p-4 z-50">
+        <div
+          className="absolute top-0 right-0 w-56 bg-white shadow-xl rounded p-4 z-50"
+          onClick={(e) => {
+            // Ensure clicks inside the quick add don't navigate
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
           <div className="relative w-full h-32 mb-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -204,7 +220,11 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
               {sizeOptions.map((s) => (
                 <button
                   key={s}
-                  onClick={() => setSelectedSize(s)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedSize(s);
+                  }}
                   className={`border rounded-md py-1 px-2 text-sm transition-all ${
                     selectedSize === s
                       ? "bg-black text-white border-black"
@@ -219,7 +239,9 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
 
           <div className="flex gap-2">
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 if (!selectedSize) return;
                 addItem({
                   product: product._id,
@@ -236,7 +258,11 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
               Add
             </button>
             <button
-              onClick={() => setShowQuickAdd(false)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowQuickAdd(false);
+              }}
               className="flex-1 border border-gray-400 py-2 rounded"
             >
               Cancel
@@ -244,6 +270,6 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
           </div>
         </div>
       )}
-    </div>
+    </Link>
   );
 }
