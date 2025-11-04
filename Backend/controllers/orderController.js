@@ -5,6 +5,14 @@ import Product from "../models/productModel.js";
 import Coupon from "../models/couponModel.js";
 import User from "../models/userModel.js";
 
+/**
+ * Create order
+ * - normalizes orderItems (product id + qty)
+ * - computes item prices by reading Product
+ * - validates coupon (if any)
+ * - saves order
+ * - increments coupon.usedCount **only if coupon.special === true** (atomic $inc)
+ */
 export const createOrder = asyncHandler(async (req, res) => {
   const {
     orderItems,
@@ -20,7 +28,7 @@ export const createOrder = asyncHandler(async (req, res) => {
   }
 
   // normalize product id & qty
- const orderItemsNorm = orderItems.map((it) => ({
+  const orderItemsNorm = orderItems.map((it) => ({
     ...it,
     product: it.product || it._id || it.id,
     quantity: it.quantity || it.qty || 1,
@@ -47,14 +55,23 @@ export const createOrder = asyncHandler(async (req, res) => {
   let coupon = null;
 
   if (couponCode) {
-    coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), active: true });
+    const code = String(couponCode || "").trim().toUpperCase();
+    if (!code) {
+      return res.status(400).json({ message: "Invalid coupon code" });
+    }
+
+    coupon = await Coupon.findOne({ code, active: true });
     if (!coupon) return res.status(400).json({ message: "Invalid or inactive coupon" });
+
     if (coupon.expiryDate && coupon.expiryDate < new Date()) {
       return res.status(400).json({ message: "Coupon expired" });
     }
-    if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) {
+
+    // optional usageLimit handling (if you have usageLimit field)
+    if (coupon.usageLimit > 0 && (coupon.usedCount || 0) >= coupon.usageLimit) {
       return res.status(400).json({ message: "Coupon usage limit reached" });
     }
+
     if (itemsPrice < (coupon.minOrderAmount || 0)) {
       return res.status(400).json({
         message: `Minimum order amount for coupon is ₹${coupon.minOrderAmount}`,
@@ -79,7 +96,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     orderItems: orderItemsNorm,
     shippingAddress,
     paymentMethod,
-    taxPrice,        
+    taxPrice,
     shippingPrice,
     itemsPrice,
     discountAmount,
@@ -87,13 +104,29 @@ export const createOrder = asyncHandler(async (req, res) => {
     status: "pending",
     paymentStatus: "pending",
     upi: {},
+    couponCode: coupon ? coupon.code : null, // store applied coupon code (optional helpful)
   });
 
   const created = await order.save();
 
+  // Atomically increment usedCount **only for special coupons**
+  // (we do not fail the order if the coupon increment fails — just log)
   if (coupon) {
-    coupon.usedCount = (coupon.usedCount || 0) + 1;
-    await coupon.save();
+    try {
+      if (coupon.special) {
+        await Coupon.findByIdAndUpdate(
+          coupon._id,
+          { $inc: { usedCount: 1 } },
+          { new: true } // not strictly needed, but ok
+        );
+      } else {
+        // If you want to track total uses for all coupons, uncomment below:
+        // await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } });
+      }
+    } catch (incErr) {
+      console.error("Failed to increment coupon usedCount:", incErr);
+      // don't abort order — coupon count failure shouldn't block checkout
+    }
   }
 
   res.status(201).json(created);
@@ -157,7 +190,7 @@ export const adminListOrders = asyncHandler(async (req, res) => {
     const users = await User.find({
       $or: [
         { email: { $regex: q, $options: "i" } },
-        { name:  { $regex: q, $options: "i" } },
+        { name: { $regex: q, $options: "i" } },
       ],
     }).select("_id");
     userIds = users.map((u) => u._id);

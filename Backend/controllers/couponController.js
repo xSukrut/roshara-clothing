@@ -45,8 +45,9 @@ export const createCoupon = async (req, res) => {
       maxDiscount = 0,
       expiryDate,
       active = true,
+      // new fields
       special = false,
-      influencer = null,
+      influencer = "",
     } = req.body;
 
     if (!code || value === undefined || value === null) {
@@ -70,8 +71,10 @@ export const createCoupon = async (req, res) => {
       maxDiscount: Number(maxDiscount) || 0,
       expiryDate: expiryDate ? new Date(expiryDate) : null,
       active: !!active,
+      // new fields
       special: !!special,
-      influencer: influencer ? String(influencer) : null,
+      influencer: influencer ? String(influencer).trim() : "",
+      usedCount: 0,
     });
 
     res.status(201).json(coupon);
@@ -84,7 +87,7 @@ export const createCoupon = async (req, res) => {
   }
 };
 
-// Admin: update
+// ADMIN: update
 export const updateCoupon = async (req, res) => {
   try {
     const c = await Coupon.findById(req.params.id);
@@ -99,8 +102,10 @@ export const updateCoupon = async (req, res) => {
       "maxDiscount",
       "expiryDate",
       "active",
+      // new fields
       "special",
       "influencer",
+      "usedCount",
     ];
 
     for (const f of fields) {
@@ -108,12 +113,12 @@ export const updateCoupon = async (req, res) => {
         if (f === "code") c.code = String(req.body[f]).toUpperCase().trim();
         else if (f === "discountType")
           c.discountType = req.body[f] === "amount" ? "amount" : "percentage";
-        else if (["value", "minOrderAmount", "maxDiscount"].includes(f))
+        else if (["value", "minOrderAmount", "maxDiscount", "usedCount"].includes(f))
           c[f] = Number(req.body[f]) || 0;
-        else if (f === "expiryDate") c.expiryDate = req.body[f] ? new Date(req.body[f]) : null;
-        else if (f === "active") c.active = !!req.body[f];
-        else if (f === "special") c.special = !!req.body[f];
-        else if (f === "influencer") c.influencer = req.body[f] ? String(req.body[f]) : null;
+        else if (f === "expiryDate")
+          c.expiryDate = req.body[f] ? new Date(req.body[f]) : null;
+        else if (f === "active" || f === "special")
+          c[f] = !!req.body[f];
         else c[f] = req.body[f];
       }
     }
@@ -128,7 +133,6 @@ export const updateCoupon = async (req, res) => {
     res.status(500).json({ message: "Failed to update coupon" });
   }
 };
-
 // Admin: delete
 export const deleteCoupon = async (req, res) => {
   try {
