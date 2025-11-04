@@ -107,14 +107,18 @@ export default function CartPage() {
           <div className="space-y-4">
             {items.map((it) => {
               const img = urlFor(it.image);
+              // create a stable key that includes customSize (if present) so React can differentiate lines
+              const customSig = it.customSize ? JSON.stringify(it.customSize) : "nostyle";
+              const itemKey = `${it.product}-${it.size || "NOSIZE"}-${customSig}`;
+
               return (
                 <div
-                  key={`${it.product}-${it.size || "NOSIZE"}`}
+                  key={itemKey}
                   className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-amber-100 bg-white rounded-2xl p-3 sm:p-4 shadow-sm transition-all duration-300 hover:shadow-lg"
                 >
                   {/* Remove */}
                   <button
-                    onClick={() => removeItem(it.product, it.size)}
+                    onClick={() => removeItem(it.product, it.size, it.customSize)}
                     className="absolute top-2 right-3 text-gray-400 hover:text-red-600 text-lg transition-colors"
                     aria-label="Remove from cart"
                   >
@@ -142,12 +146,23 @@ export default function CartPage() {
                           Size: <span className="font-medium">{it.size}</span>
                         </div>
                       )}
+
+                      {/* show custom measurements if provided */}
+                      {it.customSize && (
+                        <div className="mt-2 text-sm text-gray-700">
+                          <div className="font-medium text-sm">Custom measurements</div>
+                          <div className="text-xs text-gray-600">
+                            Bust: {it.customSize.bust}" • Waist: {it.customSize.waist}" • Hips: {it.customSize.hips}" • Shoulder: {it.customSize.shoulder}"
+                          </div>
+                        </div>
+                      )}
+
                       <div className="mt-2 inline-flex items-center gap-2">
                         <span className="text-sm text-gray-500">Qty</span>
                         <div className="flex items-center bg-white border border-gray-300 rounded-full shadow-sm overflow-hidden">
                           <button
                             onClick={() =>
-                              setQty(it.product, it.size, Math.max(it.qty - 1, 1))
+                              setQty(it.product, it.size, Math.max(it.qty - 1, 1), it.customSize)
                             }
                             className="w-8 h-8 grid place-items-center hover:bg-gray-100"
                             aria-label="Decrease quantity"
@@ -158,7 +173,7 @@ export default function CartPage() {
                             {it.qty}
                           </span>
                           <button
-                            onClick={() => setQty(it.product, it.size, it.qty + 1)}
+                            onClick={() => setQty(it.product, it.size, it.qty + 1, it.customSize)}
                             className="w-8 h-8 grid place-items-center hover:bg-gray-100"
                             aria-label="Increase quantity"
                           >

@@ -1,3 +1,4 @@
+// context/CartContext.jsx
 "use client";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
@@ -20,8 +21,9 @@ function save(items) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-// Helper: build a stable key per line item (product + size)
-export const lineKey = (product, size) => `${product}__${size || "NOSIZE"}`;
+// Helper: build a stable key per line item (product + size + custom signature)
+export const lineKey = (product, size, customSize) =>
+  `${product}__${size || "NOSIZE"}__${customSize ? JSON.stringify(customSize) : "NOCUST"}`;
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
@@ -33,17 +35,33 @@ export function CartProvider({ children }) {
     save(items);
   }, [items]);
 
-  const addItem = ({ product, name, price, image, size, qty = 1 }) => {
+  // helper to compare customSize objects (both null/undefined considered equal)
+  function sameCustom(a, b) {
+    if (!a && !b) return true;
+    try {
+      return JSON.stringify(a || {}) === JSON.stringify(b || {});
+    } catch {
+      return false;
+    }
+  }
+
+  const addItem = ({ product, name, price, image, size = null, qty = 1, customSize = null }) => {
     if (!product) return;
 
     const productId = typeof product === "object" ? product._id : product;
 
     setItems((prev) => {
       const next = [...prev];
+      // find an existing item that matches product, size and customSize
       const idx = next.findIndex(
-        (it) => it.product === productId && (it.size || null) === (size || null)
+        (it) =>
+          it.product === productId &&
+          (it.size || null) === (size || null) &&
+          sameCustom(it.customSize, customSize)
       );
+
       if (idx >= 0) {
+        // merge by increasing qty
         next[idx] = { ...next[idx], qty: (next[idx].qty || 1) + qty };
       } else {
         next.push({
@@ -53,30 +71,39 @@ export function CartProvider({ children }) {
           image,
           size: size || null,
           qty: Number(qty) || 1,
+          customSize: customSize || null,
         });
       }
       return next;
     });
   };
 
-  // Set quantity per product + size
-  const setQty = (product, size, qty) => {
+  // Set quantity per product + size (+ optional customSize)
+  // keep signature backward-compatible: setQty(product, size, qty) or setQty(product, size, qty, customSize)
+  const setQty = (product, size, qty, customSize = null) => {
+    const productId = typeof product === "object" ? product._id : product;
     setItems((prev) =>
       prev.map((it) =>
-        it.product === product && (it.size || null) === (size || null)
+        it.product === productId &&
+        (it.size || null) === (size || null) &&
+        (customSize ? sameCustom(it.customSize, customSize) : true)
           ? { ...it, qty: Math.max(1, Number(qty) || 1) }
           : it
       )
     );
   };
 
-  const removeItem = (product, size = null) => {
+  const removeItem = (product, size = null, customSize = null) => {
     const productId = typeof product === "object" ? product._id : product;
 
     setItems((prev) =>
       prev.filter(
         (it) =>
-          !(it.product === productId && (it.size || null) === (size || null))
+          !(
+            it.product === productId &&
+            (it.size || null) === (size || null) &&
+            (customSize ? sameCustom(it.customSize, customSize) : true)
+          )
       )
     );
   };
