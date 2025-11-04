@@ -1,3 +1,4 @@
+// app/components/NewArrivals/ProductCard.jsx
 "use client";
 
 import { motion } from "framer-motion";
@@ -54,7 +55,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const [hovering, setHovering] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [showCustomForm, setShowCustomForm] = useState(false);
+  const [showCustomInputs, setShowCustomInputs] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
 
   // custom measurements state
@@ -62,7 +63,6 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const [customWaist, setCustomWaist] = useState("");
   const [customHips, setCustomHips] = useState("");
   const [customShoulder, setCustomShoulder] = useState("");
-  const [customError, setCustomError] = useState("");
 
   // Build image list from product payload
   const rawImages = Array.isArray(product?.images) ? product.images : [];
@@ -102,12 +102,12 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       setSelectedSize((prev) => prev ?? sizeOptions[0]);
     } else {
       setSelectedSize(null);
-      setShowCustomForm(false);
+      // reset custom inputs when panel closes
+      setShowCustomInputs(false);
       setCustomBust("");
       setCustomWaist("");
       setCustomHips("");
       setCustomShoulder("");
-      setCustomError("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showQuickAdd, product?._id]);
@@ -115,54 +115,15 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const heightClass = size === "lg" ? "h-[420px] md:h-[460px]" : "h-[350px]";
   const fav = inWishlist(product._id);
 
-  const firstImage = images[0] || "/placeholder.png";
-
-  function handleAddClick(e) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // If custom form is visible, validate measurements
-    let customSize = null;
-    if (showCustomForm) {
-      // basic validation: at least one value or require all?
-      if (!customBust || !customWaist || !customHips || !customShoulder) {
-        setCustomError("Please fill all measurements (in inches).");
-        return;
-      }
-      // primitive numeric check
-      const toNum = (v) => Number(String(v).replace(/[^0-9.]/g, ""));
-      if (
-        isNaN(toNum(customBust)) ||
-        isNaN(toNum(customWaist)) ||
-        isNaN(toNum(customHips)) ||
-        isNaN(toNum(customShoulder))
-      ) {
-        setCustomError("Measurements must be numbers.");
-        return;
-      }
-
-      customSize = {
-        bust: String(customBust).trim(),
-        waist: String(customWaist).trim(),
-        hips: String(customHips).trim(),
-        shoulder: String(customShoulder).trim(),
-      };
-    }
-
-    // final payload: include size and optional customSize
-    const payload = {
-      product: product._id,
-      name: product.name,
-      price: product.price,
-      image: firstImage,
-      size: selectedSize,
+  function buildCustomSizeObject() {
+    // If all fields are empty, return null
+    if (!customBust && !customWaist && !customHips && !customShoulder) return null;
+    return {
+      bust: customBust ? String(customBust).trim() : "",
+      waist: customWaist ? String(customWaist).trim() : "",
+      hips: customHips ? String(customHips).trim() : "",
+      shoulder: customShoulder ? String(customShoulder).trim() : "",
     };
-
-    if (customSize) payload.customSize = customSize;
-
-    addItem(payload);
-    openMiniCart?.();
-    setShowQuickAdd(false);
   }
 
   return (
@@ -229,7 +190,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
                 product: product._id,
                 name: product.name,
                 price: product.price,
-                image: firstImage,
+                image: images[0] || "/placeholder.png",
               });
             }}
             aria-label={fav ? "Remove from wishlist" : "Add to wishlist"}
@@ -251,41 +212,48 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       {/* Quick Add */}
       {showQuickAdd && (
         <div
-          className="absolute top-0 right-0 w-64 bg-white shadow-xl rounded p-4 z-50"
+          className="absolute top-0 right-0 w-72 bg-white shadow-xl rounded p-4 z-50"
           onClick={(e) => {
-            // Ensure clicks inside the quick add don't navigate
+            // ensure clicks inside quick add don't navigate
             e.preventDefault();
             e.stopPropagation();
           }}
         >
-          <div className="relative w-full h-28 mb-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={firstImage}
-              alt={product.name}
-              className="w-full h-full object-cover rounded"
-              onError={(e) => (e.currentTarget.src = "/placeholder.png")}
-            />
-            <div className="absolute inset-0 bg-blue-200/30 rounded" />
-          </div>
-
-          <div className="mb-3">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-semibold">Select Size</p>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowCustomForm((s) => !s);
-                }}
-                className="text-sm px-2 py-1 border rounded text-gray-700"
-                title="Enter custom measurements"
-              >
-                Custom
-              </button>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="relative w-14 h-14 rounded overflow-hidden bg-gray-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={images[0]}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => (e.currentTarget.src = "/placeholder.png")}
+                />
+              </div>
+              <div>
+                <div className="font-medium">{product.name}</div>
+                <div className="text-sm text-amber-700 font-semibold">₹{product.price}</div>
+              </div>
             </div>
 
-            <div className="flex gap-2 flex-wrap mb-2">
+            {/* Custom toggle */}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowCustomInputs((s) => !s);
+              }}
+              className="text-sm px-3 py-1 border rounded-md bg-white hover:bg-gray-50"
+              title="Add custom measurements"
+            >
+              Custom
+            </button>
+          </div>
+
+          {/* Size selection */}
+          <div className="mb-3">
+            <p className="text-sm font-semibold mb-2">Select Size</p>
+            <div className="flex gap-2 flex-wrap">
               {sizeOptions.map((s) => (
                 <button
                   key={s}
@@ -293,8 +261,6 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
                     e.preventDefault();
                     e.stopPropagation();
                     setSelectedSize(s);
-                    setShowCustomForm(false);
-                    setCustomError("");
                   }}
                   className={`border rounded-md py-1 px-2 text-sm transition-all ${
                     selectedSize === s
@@ -306,53 +272,70 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
                 </button>
               ))}
             </div>
-
-            {/* Custom form */}
-            {showCustomForm && (
-              <div className="space-y-2">
-                <p className="text-xs text-gray-600">Enter measurements (in inches)</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="Bust"
-                    value={customBust}
-                    onChange={(e) => setCustomBust(e.target.value)}
-                    className="border rounded px-2 py-1 text-sm"
-                  />
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="Waist"
-                    value={customWaist}
-                    onChange={(e) => setCustomWaist(e.target.value)}
-                    className="border rounded px-2 py-1 text-sm"
-                  />
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="Hips"
-                    value={customHips}
-                    onChange={(e) => setCustomHips(e.target.value)}
-                    className="border rounded px-2 py-1 text-sm"
-                  />
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="Shoulder"
-                    value={customShoulder}
-                    onChange={(e) => setCustomShoulder(e.target.value)}
-                    className="border rounded px-2 py-1 text-sm"
-                  />
-                </div>
-                {customError && <div className="text-red-600 text-xs">{customError}</div>}
-              </div>
-            )}
           </div>
+
+          {/* Custom input fields */}
+          {showCustomInputs && (
+            <div className="mb-3 space-y-2">
+              <p className="text-sm font-semibold">Custom measurements (in inches)</p>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={customBust}
+                  onChange={(e) => setCustomBust(e.target.value)}
+                  placeholder="Bust"
+                  className="border rounded px-2 py-1 text-sm"
+                />
+                <input
+                  type="text"
+                  value={customWaist}
+                  onChange={(e) => setCustomWaist(e.target.value)}
+                  placeholder="Waist"
+                  className="border rounded px-2 py-1 text-sm"
+                />
+                <input
+                  type="text"
+                  value={customHips}
+                  onChange={(e) => setCustomHips(e.target.value)}
+                  placeholder="Hips"
+                  className="border rounded px-2 py-1 text-sm"
+                />
+                <input
+                  type="text"
+                  value={customShoulder}
+                  onChange={(e) => setCustomShoulder(e.target.value)}
+                  placeholder="Shoulder"
+                  className="border rounded px-2 py-1 text-sm"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-2">
             <button
-              onClick={handleAddClick}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // require a size before add
+                if (!selectedSize) return;
+
+                const customSize = buildCustomSizeObject();
+
+                addItem({
+                  product: product._id,
+                  name: product.name,
+                  price: product.price,
+                  image: images[0],
+                  size: selectedSize,
+                  qty: 1,
+                  customSize,
+                });
+
+                openMiniCart?.();
+                setShowQuickAdd(false);
+                // keep custom inputs state in sync (optional)
+                setShowCustomInputs(false);
+              }}
               className="flex-1 bg-black text-white py-2 rounded"
             >
               Add
