@@ -1,38 +1,13 @@
 // controllers/couponController.js
 import Coupon from "../models/couponModel.js";
-import User from "../models/userModel.js"; 
 
-// helper: check follower relation
-async function isFollower(influencerId, userId) {
-  if (!influencerId || !userId) return false;
-
-  try {
-    const [user, influencer] = await Promise.all([
-      User.findById(userId).select("following"),
-      User.findById(influencerId).select("followers"),
-    ]);
-
-    if (user && Array.isArray(user.following)) {
-      if (user.following.some((id) => String(id) === String(influencerId))) return true;
-    }
-
-    if (influencer && Array.isArray(influencer.followers)) {
-      if (influencer.followers.some((id) => String(id) === String(userId))) return true;
-    }
-
-    return false;
-  } catch (err) {
-    console.error("isFollower check failed:", err);
-    return false;
-  }
-}
 
 export const getActiveCoupons = async (req, res) => {
   try {
     const now = new Date();
     const coupons = await Coupon.find({
-      special: { $ne: true }, 
       active: true,
+      special: { $ne: true }, // exclude special coupons from public list
       $or: [
         { expiryDate: { $exists: false } },
         { expiryDate: null },
@@ -47,7 +22,7 @@ export const getActiveCoupons = async (req, res) => {
   }
 };
 
-// ADMIN: list all
+// Admin: list all (including special)
 export const getAllCoupons = async (req, res) => {
   try {
     const coupons = await Coupon.find({}).sort({ createdAt: -1 });
@@ -58,7 +33,7 @@ export const getAllCoupons = async (req, res) => {
   }
 };
 
-// ADMIN: create
+// Admin: create
 export const createCoupon = async (req, res) => {
   try {
     let {
@@ -96,7 +71,7 @@ export const createCoupon = async (req, res) => {
       expiryDate: expiryDate ? new Date(expiryDate) : null,
       active: !!active,
       special: !!special,
-      influencer: influencer || null,
+      influencer: influencer ? String(influencer) : null,
     });
 
     res.status(201).json(coupon);
@@ -109,7 +84,7 @@ export const createCoupon = async (req, res) => {
   }
 };
 
-// ADMIN: update
+// Admin: update
 export const updateCoupon = async (req, res) => {
   try {
     const c = await Coupon.findById(req.params.id);
@@ -138,7 +113,7 @@ export const updateCoupon = async (req, res) => {
         else if (f === "expiryDate") c.expiryDate = req.body[f] ? new Date(req.body[f]) : null;
         else if (f === "active") c.active = !!req.body[f];
         else if (f === "special") c.special = !!req.body[f];
-        else if (f === "influencer") c.influencer = req.body[f] || null;
+        else if (f === "influencer") c.influencer = req.body[f] ? String(req.body[f]) : null;
         else c[f] = req.body[f];
       }
     }
@@ -154,7 +129,7 @@ export const updateCoupon = async (req, res) => {
   }
 };
 
-// ADMIN: delete
+// Admin: delete
 export const deleteCoupon = async (req, res) => {
   try {
     const c = await Coupon.findById(req.params.id);
@@ -167,44 +142,37 @@ export const deleteCoupon = async (req, res) => {
   }
 };
 
-
 export const redeemCoupon = async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, orderAmount } = req.body;
     if (!code) return res.status(400).json({ message: "Coupon code required" });
 
-    const coupon = await Coupon.findOne({ code: String(code).toUpperCase().trim() });
+    const now = new Date();
+    const upper = String(code).toUpperCase().trim();
+
+    // Find the coupon
+    const coupon = await Coupon.findOne({ code: upper });
     if (!coupon) return res.status(404).json({ message: "Coupon not found" });
 
-    // basic checks: active & expiry
-    if (!coupon.active) return res.status(400).json({ message: "Coupon not active" });
+    if (!coupon.active) return res.status(400).json({ message: "Coupon is not active" });
 
-    if (coupon.expiryDate && coupon.expiryDate < new Date()) {
-      return res.status(400).json({ message: "Coupon expired" });
+    if (coupon.expiryDate && coupon.expiryDate < now) {
+      return res.status(400).json({ message: "Coupon has expired" });
     }
 
-    if (coupon.special) {
-      if (!req.user || !req.user._id) {
-        return res.status(401).json({ message: "Authentication required to use this coupon" });
-      }
 
-      if (coupon.influencer) {
-        const allowed = await isFollower(coupon.influencer, req.user._id);
-        if (!allowed) {
-          return res.status(403).json({ message: "This coupon is restricted to influencer followers" });
-        }
-      } else {
-      
-        return res.status(403).json({ message: "Special coupon not usable" });
-      }
+    if (orderAmount !== undefined && Number(coupon.minOrderAmount || 0) > Number(orderAmount || 0)) {
+      return res.status(400).json({ message: `Minimum order amount ₹${coupon.minOrderAmount} required` });
     }
 
-    if (coupon.special) {
-      coupon.specialUseCount = (coupon.specialUseCount || 0) + 1;
-      await coupon.save();
-    }
 
-    res.json(coupon);
+    const updated = await Coupon.findOneAndUpdate(
+      { _id: coupon._id },
+      { $inc: { usedCount: 1 } },
+      { new: true }
+    );
+
+    res.json(updated);
   } catch (err) {
     console.error("redeemCoupon error:", err);
     res.status(500).json({ message: "Failed to redeem coupon" });

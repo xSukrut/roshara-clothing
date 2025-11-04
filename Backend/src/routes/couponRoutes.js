@@ -12,9 +12,11 @@ import { protect, admin } from "../../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+// Public: used by checkout page (excludes special coupons)
 router.get("/active", getActiveCoupons);
 
-router.post("/redeem", protect, redeemCoupon);
+// Public: redeem/validate a coupon (increments usedCount)
+router.post("/redeem", redeemCoupon);
 
 // Admin
 router
