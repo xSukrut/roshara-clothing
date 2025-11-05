@@ -166,7 +166,7 @@ export default function HeroSection() {
           <Image
             src="/assets/Roshara-middle.jpg"
             alt="Right Model"
-            width={570}
+            width={540}
             height={750}
             className="object-contain"
           />
