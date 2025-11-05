@@ -31,10 +31,10 @@ function normalizeSizes(list) {
 }
 
 function imagesFromProduct(product) {
-  const candidates = product?.images?.length ? product.images : [product?.image];
-  const out = (candidates || [])
-    .map((img) => resolveImg(img))
-    .filter(Boolean);
+  const candidates = product?.images?.length
+    ? product.images
+    : [product?.image];
+  const out = (candidates || []).map((img) => resolveImg(img)).filter(Boolean);
   return out.length ? out : ["/placeholder.png"];
 }
 
@@ -75,8 +75,8 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
   };
 
   return (
-    <div className=" fixed inset-0 z-90 bg-black/50 backdrop-blur-xs">
-      <div className="fixed inset-0 z-100 flex items-center justify-center p-4 w-full max-w-3xl mx-auto">
+    <div className=" fixed inset-0 z-[9999] bg-black/50 backdrop-blur-xs">
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 w-full max-w-3xl mx-auto">
         <div className="relative bg-white w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl">
           <button
             className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200"

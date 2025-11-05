@@ -6,7 +6,7 @@ import { ChevronDown } from "lucide-react";
 
 export default function HeroSection() {
   return (
-    <section className="relative w-full h-screen flex overflow-hidden -mt-24">
+    <section className="relative w-full h-screen flex -mt-24">
       {/* LEFT SECTION */}
       <div className="w-1/3 h-full bg-[#f8f5f0] flex flex-col justify-center items-center relative overflow-hidden">
         {/* Left Model Image */}
