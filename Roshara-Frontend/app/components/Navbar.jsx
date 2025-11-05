@@ -114,12 +114,10 @@ export default function Navbar() {
           </li>
 
           {/* About (click-to-toggle) */}
-          {/* About (click-to-toggle) */}
-          {/* About (click-to-toggle) */}
           <li className="relative group">
-            {/* Trigger Row */}
+            {/* Trigger */}
             <div
-              className={`flex items-center gap-1 cursor-pointer ${hoverClass}`}
+              className={`flex items-center gap-1 cursor-pointer ${hoverClass} py-2`}
             >
               <span
                 className={`${
@@ -136,15 +134,16 @@ export default function Navbar() {
               />
             </div>
 
-            {/* Dropdown */}
+            {/* Dropdown Menu */}
             <div
               className="
-      absolute left-0 top-full 
-      w-64 mt-2 
+      absolute left-0 
+      top-[100%]    /* ✅ ensures menu touches trigger */
+      w-64 
       rounded-md border bg-white text-black shadow-lg 
-      opacity-0 pointer-events-none 
-      group-hover:opacity-100 group-hover:pointer-events-auto 
-      transition-opacity duration-200
+      opacity-0 scale-95 pointer-events-none
+      group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto
+      transition-all duration-200 ease-out
       z-50
     "
             >
@@ -158,7 +157,7 @@ export default function Navbar() {
                 href="/about/shipping-returns"
                 className="block px-3 py-2 rounded hover:bg-gray-50"
               >
-                Shipping & Return Policy
+                Shipping & Return Polic
               </Link>
             </div>
           </li>
