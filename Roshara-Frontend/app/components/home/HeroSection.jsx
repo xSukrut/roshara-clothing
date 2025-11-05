@@ -193,7 +193,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 1 }}
-          className="absolute right-[29rem] top-[6rem] z-10"
+          className="absolute right-[40rem] top-[2rem] z-10"
         >
           <Image
             src="/assets/ROSHARA.png"
