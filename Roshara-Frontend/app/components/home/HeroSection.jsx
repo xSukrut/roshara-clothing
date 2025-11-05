@@ -193,7 +193,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 1 }}
-          className="absolute right-[26rem] top-[1rem] z-10"
+          className="absolute right-[29rem] top-[0.5rem] z-10"
         >
           <Image
             src="/assets/ROSHARA.png"
@@ -212,8 +212,8 @@ export default function HeroSection() {
           className="absolute right-[7rem] top-[7rem] h-[25rem] flex items-center"
         >
           <p className="text-white text-lg tracking-wider rotate-180 [writing-mode:vertical-rl]">
-            — Bold prints, unapologetic visuals, and a movement to make India
-            wear its roots with pride.
+            Bold prints, unapologetic visuals, and a movement to make India wear
+            its roots with pride.
           </p>
         </motion.div>
       </div>
