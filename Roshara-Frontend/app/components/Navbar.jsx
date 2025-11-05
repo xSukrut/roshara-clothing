@@ -117,6 +117,7 @@ export default function Navbar() {
           {/* About (click-to-toggle) */}
           {/* About (click-to-toggle) */}
           <li className="relative group">
+            {/* Trigger Row */}
             <div
               className={`flex items-center gap-1 cursor-pointer ${hoverClass}`}
             >
@@ -129,16 +130,24 @@ export default function Navbar() {
               >
                 About
               </span>
-
-              {/* Chevron icon rotates on hover */}
               <ChevronDown
                 size={16}
                 className="transition-transform duration-200 group-hover:rotate-180"
               />
             </div>
 
-            {/* Dropdown menu */}
-            <div className="absolute left-0 top-full mt-3 hidden group-hover:block w-64 rounded-md border bg-white text-black shadow-lg p-2 z-50">
+            {/* Dropdown */}
+            <div
+              className="
+      absolute left-0 top-full 
+      w-64 mt-2 
+      rounded-md border bg-white text-black shadow-lg 
+      opacity-0 pointer-events-none 
+      group-hover:opacity-100 group-hover:pointer-events-auto 
+      transition-opacity duration-200
+      z-50
+    "
+            >
               <Link
                 href="/about"
                 className="block px-3 py-2 rounded hover:bg-gray-50"
