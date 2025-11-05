@@ -157,7 +157,7 @@ export default function Navbar() {
                 href="/about/shipping-returns"
                 className="block px-3 py-2 rounded hover:bg-gray-50"
               >
-                Shipping & Return Polic
+                Shipping & Return Policy
               </Link>
             </div>
           </li>
