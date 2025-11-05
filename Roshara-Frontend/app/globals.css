@@ -5,6 +5,15 @@
 
 /* your other styles… */
 
+/* Make default cursor normal everywhere */
+body, html, * {
+  cursor: default;
+}
+
+/* But keep text cursor only inside inputs + editable text */
+input, textarea, [contenteditable="true"], select {
+  cursor: text;
+}
 
 body {
   font-family: Arial, Helvetica, sans-serif;

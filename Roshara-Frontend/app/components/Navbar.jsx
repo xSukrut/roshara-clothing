@@ -76,7 +76,7 @@ export default function Navbar() {
               alt="Roshara"
               width={200}
               height={60}
-              className="cursor-pointer"
+              className="cursor-default"
               priority
             />
           </Link>
