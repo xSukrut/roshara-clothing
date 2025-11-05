@@ -76,11 +76,8 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
 
   return (
     <div className=" fixed inset-0 z-[9999] bg-black/50 backdrop-blur-xs">
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 w-full mx-auto">
-        <div
-          className="relative bg-white w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl
-     max-h-[80vh] overflow-y-auto scrollbar-none"
-        >
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 w-full max-w-3xl mx-auto">
+        <div className="relative bg-white w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl">
           <button
             className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200"
             onClick={onClose}
@@ -88,7 +85,8 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 sm:gap-6 sm:p-6">
+
+          <div className="grid md:grid-cols-2 gap-6 p-6">
             {/* LEFT: gallery */}
             <div>
               <div className="relative w-full aspect-3/4 rounded-xl overflow-hidden bg-gray-100">
