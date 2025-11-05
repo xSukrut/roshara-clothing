@@ -166,8 +166,8 @@ export default function HeroSection() {
           <Image
             src="/assets/Tarni_Front1.jpg"
             alt="Right Model"
-            width={520}
-            height={720}
+            width={600}
+            height={780}
             className="object-contain"
           />
         </motion.div>
