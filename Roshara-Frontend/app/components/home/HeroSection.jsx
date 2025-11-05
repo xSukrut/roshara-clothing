@@ -73,10 +73,10 @@ export default function HeroSection() {
             height={230}
             className="rounded-lg"
           />
-          <div className="mt-4 flex flex-col items-center text-white text-sm font-light tracking-wide">
+          {/* <div className="mt-4 flex flex-col items-center text-white text-sm font-light tracking-wide">
             <p>Scroll Down</p>
             <ChevronDown className="animate-bounce mt-1" size={20} />
-          </div>
+          </div> */}
         </motion.div>
 
         {/* Vertical Text (ROSHARA) */}
