@@ -177,7 +177,7 @@ export default function HeroSection() {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.8 }}
-          className="absolute bottom-4 right-[24rem] z-30"
+          className="absolute bottom-4 right-[18rem] z-30"
         >
           <Image
             src="/assets/Tarni_Back.JPG"
@@ -193,7 +193,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 1 }}
-          className="absolute right-[40rem] top-[2rem] z-10"
+          className="absolute right-[20rem] top-[2rem] z-10"
         >
           <Image
             src="/assets/ROSHARA.png"
