@@ -79,7 +79,7 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
       <div className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 w-full mx-auto">
         <div
           className="relative bg-white w-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl
-     max-h-[90vh] overflow-y-auto scrollbar-none"
+     max-h-[80vh] overflow-y-auto scrollbar-none"
         >
           <button
             className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200"
