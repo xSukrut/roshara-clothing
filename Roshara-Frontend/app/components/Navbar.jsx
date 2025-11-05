@@ -83,7 +83,7 @@ export default function Navbar() {
         </div>
 
         {/* Desktop Nav */}
-        <ul className={`hidden md:flex items-center gap-10 ${textClass}`}>
+        <ul className={`hidden md:flex items-center gap-8 ${textClass}`}>
           <li>
             <Link
               href="/new-arrivals"
@@ -138,7 +138,7 @@ export default function Navbar() {
             <div
               className="
       absolute left-0 
-      top-[100%]    /* ✅ ensures menu touches trigger */
+      top-[100%]
       w-64 
       rounded-md border bg-white text-black shadow-lg 
       opacity-0 scale-95 pointer-events-none
