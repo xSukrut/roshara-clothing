@@ -121,7 +121,7 @@ export default function HeroSection() {
   return (
     <section className="relative w-full h-screen flex flex-col lg:flex-row -mt-24">
       {/* LEFT SECTION */}
-      <div className="w-full lg:w-1/3 h-full bg-[#f8f5f0] flex flex-col justify-center items-center relative overflow-hidden py-10 lg:py-0">
+      <div className="w-full lg:w-1/3 h-full bg-[#f8f5f0] flex flex-col justify-center items-center relative overflow-hidden py-7 lg:py-0">
         {/* Main Model Image */}
         <motion.div
           initial={{ x: -50, opacity: 0 }}
@@ -143,7 +143,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.4 }}
-          className="mt-6 text-center lg:text-left lg:absolute lg:bottom-[7rem] lg:left-[13rem] z-20"
+          className="mt-8 text-center lg:text-left lg:absolute lg:bottom-[7rem] lg:left-[13rem] z-20"
         >
           <h1 className="text-6xl lg:text-[100px] leading-none font-serif text-[#4C1417] drop-shadow-md">
             Style
@@ -193,7 +193,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 1 }}
-          className="absolute right-[29rem] top-[0.5rem] z-10"
+          className="absolute right-[29rem] top-[0rem] z-10"
         >
           <Image
             src="/assets/ROSHARA.png"
