@@ -130,7 +130,7 @@ export default function HeroSection() {
           className="relative z-10"
         >
           <Image
-            src="/assets/Tarni_Front2.jpg"
+            src="/assets/Tarni_Front1.jpg"
             alt="Left Model"
             width={260}
             height={260}
@@ -164,7 +164,7 @@ export default function HeroSection() {
           className="relative z-10 ml-0"
         >
           <Image
-            src="/assets/Tarni_Front1.jpg"
+            src="/assets/Roshara-middle.jpg"
             alt="Right Model"
             width={570}
             height={750}
@@ -180,7 +180,7 @@ export default function HeroSection() {
           className="absolute bottom-4 right-[22rem] z-30"
         >
           <Image
-            src="/assets/Tarni_Back.JPG"
+            src="/assets/Roshara-right.JPG"
             alt="Bottom Model"
             width={180}
             height={230}
@@ -193,7 +193,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 1 }}
-          className="absolute right-[24rem] top-[2rem] z-10"
+          className="absolute right-[25rem] top-[2rem] z-10"
         >
           <Image
             src="/assets/ROSHARA.png"
