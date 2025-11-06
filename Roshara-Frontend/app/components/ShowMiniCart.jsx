@@ -1,3 +1,4 @@
+// app/components/ShowMiniCart.jsx
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart, lineKey } from "@context/CartContext";
@@ -8,7 +9,7 @@ import { useEffect, useState } from "react";
 import { resolveImg } from "@/utils/img";
 
 export default function ShowMiniCart() {
-  const { items, removeItem, itemsPrice, shippingPrice, taxPrice, totalPrice } =
+  const { items, removeItem, itemsPrice, shippingPrice, taxPrice = 0, totalPrice } =
     useCart();
 
   const [miniCartOpen, setMiniCartOpen] = useState(false);
@@ -59,45 +60,69 @@ export default function ShowMiniCart() {
           ) : (
             <>
               <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400">
-                {items.map((item) => (
-                  <motion.div
-                    key={lineKey(item.product, item.size)}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex items-center gap-3 border-b border-gray-100 p-2 hover:bg-gray-50/70 rounded-lg transition-all"
-                  >
-                    {/* Image */}
-                    <div className="relative w-18 h-18 rounded-lg overflow-hidden bg-gray-100 group">
-                      <Image
-                        src={resolveImg(item.image)}
-                        alt={item.name}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
+                {items.map((item) => {
+                  // line key should include customSize if present
+                  const key = lineKey(item.product, item.size, item.customSize);
+                  const imgSrc = resolveImg(item.image);
 
-                    {/* Info */}
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-800 leading-tight">
-                        {item.name}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {item.size && `Size: ${item.size} • `}₹{item.price} ×{" "}
-                        {item.qty}
-                      </p>
-                    </div>
+                  const unitPrice = Number(item.price || 0);
+                  const extra = Number(item.extra || 0);
+                  const qty = Number(item.qty || 1);
+                  const lineTotal = (unitPrice + extra) * qty;
 
-                    {/* Remove */}
-                    <button
-                      onClick={() => removeItem(item.product, item.size)}
-                      className="p-1 rounded-full hover:bg-red-50 transition"
-                      title="Remove item"
+                  return (
+                    <motion.div
+                      key={key}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-3 border-b border-gray-100 p-2 hover:bg-gray-50/70 rounded-lg transition-all"
                     >
-                      <X className="w-4 h-4 text-red-500 hover:text-red-600" />
-                    </button>
-                  </motion.div>
-                ))}
+                      {/* Image */}
+                      <div className="relative w-18 h-18 rounded-lg overflow-hidden bg-gray-100 group">
+                        <Image
+                          src={imgSrc}
+                          alt={item.name}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 leading-tight">
+                          {item.name}
+                        </p>
+
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">
+                          {item.size && `Size: ${item.size} • `}
+                          ₹{unitPrice} × {qty}
+                        </p>
+
+                        {extra > 0 && (
+                          <p className="text-xs text-amber-800 mt-1">
+                            +₹{extra} size surcharge
+                          </p>
+                        )}
+
+                        <div className="text-sm font-semibold mt-1">
+                          Line total: ₹{lineTotal}
+                        </div>
+                      </div>
+
+                      {/* Remove */}
+                      <button
+                        onClick={() =>
+                          removeItem(item.product, item.size, item.customSize || null)
+                        }
+                        className="p-1 rounded-full hover:bg-red-50 transition"
+                        title="Remove item"
+                      >
+                        <X className="w-4 h-4 text-red-500 hover:text-red-600" />
+                      </button>
+                    </motion.div>
+                  );
+                })}
               </div>
 
               {/* Summary */}
@@ -114,7 +139,7 @@ export default function ShowMiniCart() {
                 </div>
                 <div className="flex justify-between">
                   <span>Tax (5%)</span>
-                  <span className="font-medium">₹{taxPrice}</span>
+                  <span className="font-medium">₹{taxPrice ?? 0}</span>
                 </div>
                 <div className="flex justify-between font-semibold border-t border-gray-200 pt-2 text-base text-gray-900">
                   <span>Total</span>

@@ -1,3 +1,4 @@
+// models/orderModel.js
 import mongoose from "mongoose";
 
 const orderItemSchema = new mongoose.Schema({
@@ -5,6 +6,8 @@ const orderItemSchema = new mongoose.Schema({
   name: { type: String, required: true },
   quantity: { type: Number, required: true },
   price: { type: Number, required: true }, // price per unit at time of order
+  size: { type: String },
+  extra: { type: Number, default: 0 }, // surcharge per unit
 });
 
 const upiSchema = new mongoose.Schema(
@@ -27,8 +30,8 @@ const orderSchema = new mongoose.Schema(
       postalCode: String,
       country: String,
     },
-    codFee: { type: Number, default: 0},
-    paymentMethod: { type: String, required: true }, // "upi", "cod", etc.
+    codFee: { type: Number, default: 0 },
+    paymentMethod: { type: String, required: true },
     paymentResult: {
       id: String,
       status: String,
@@ -40,8 +43,6 @@ const orderSchema = new mongoose.Schema(
     itemsPrice: { type: Number, default: 0 },
     discountAmount: { type: Number, default: 0 },
     totalPrice: { type: Number, default: 0 },
-
-    // NEW: keep main status + payment status in sync
     status: {
       type: String,
       enum: ["pending", "pending_verification", "paid", "shipped", "cancelled", "rejected"],
@@ -52,15 +53,15 @@ const orderSchema = new mongoose.Schema(
       enum: ["pending", "pending_verification", "paid", "rejected"],
       default: "pending",
     },
-
-    upi: upiSchema,      
-    adminNote: String,   
-
+    upi: upiSchema,
+    adminNote: String,
     paidAt: Date,
     shippedAt: Date,
   },
   { timestamps: true }
 );
 
-const Order = mongoose.model("Order", orderSchema);
+// SAFE: reuse existing compiled model if present (prevents OverwriteModelError)
+const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
+
 export default Order;

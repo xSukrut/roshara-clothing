@@ -34,7 +34,8 @@ export default function CartPage() {
     setQty,
     itemsPrice,
     shippingPrice,
-    taxPrice,
+    // optional taxPrice may not exist on your context; use 0 fallback
+    taxPrice = 0,
     totalPrice,
     addItem,
     openMiniCart,
@@ -111,7 +112,10 @@ export default function CartPage() {
               // Add customSize JSON into the key so React can distinguish different custom entries
               const customKey = it.customSize ? JSON.stringify(it.customSize) : "";
 
-              const linePrice = (Number(it.price || 0) + Number(it.extra || 0)) * (it.qty || 1);
+              const unitPrice = Number(it.price || 0);
+              const extra = Number(it.extra || 0);
+              const qty = Number(it.qty || 1);
+              const lineTotal = (unitPrice + extra) * qty;
 
               return (
                 <div
@@ -120,7 +124,7 @@ export default function CartPage() {
                 >
                   {/* Remove */}
                   <button
-                    onClick={() => removeItem(it.product, it.size)}
+                    onClick={() => removeItem(it.product, it.size, it.customSize || null)}
                     className="absolute top-2 right-3 text-gray-400 hover:text-red-600 text-lg transition-colors"
                     aria-label="Remove from cart"
                   >
@@ -161,11 +165,8 @@ export default function CartPage() {
                         </div>
                       ) : null}
 
-                      {/* show extra if present */}
-                      {it.extra && Number(it.extra) > 0 && (
-                        <div className="text-sm text-gray-500 mt-1">
-                          Extra for large size: <span className="font-medium">₹{it.extra}</span>
-                        </div>
+                      {extra > 0 && (
+                        <div className="text-sm text-amber-800 mt-2">+₹{extra} size surcharge</div>
                       )}
 
                       <div className="mt-2 inline-flex items-center gap-2">
@@ -173,7 +174,7 @@ export default function CartPage() {
                         <div className="flex items-center bg-white border border-gray-300 rounded-full shadow-sm overflow-hidden">
                           <button
                             onClick={() =>
-                              setQty(it.product, it.size, Math.max(it.qty - 1, 1))
+                              setQty(it.product, it.size, Math.max((it.qty || 1) - 1, 1), it.customSize || null)
                             }
                             className="w-8 h-8 grid place-items-center hover:bg-gray-100"
                             aria-label="Decrease quantity"
@@ -184,7 +185,7 @@ export default function CartPage() {
                             {it.qty}
                           </span>
                           <button
-                            onClick={() => setQty(it.product, it.size, it.qty + 1)}
+                            onClick={() => setQty(it.product, it.size, (it.qty || 1) + 1, it.customSize || null)}
                             className="w-8 h-8 grid place-items-center hover:bg-gray-100"
                             aria-label="Increase quantity"
                           >
@@ -197,16 +198,11 @@ export default function CartPage() {
 
                   {/* Price */}
                   <div className="ml-auto sm:ml-0 text-right">
-                    <div className="text-sm text-gray-500">Line total</div>
-                    <div className="text-xl font-semibold text-amber-900">
-                      ₹{linePrice}
+                    <div className="text-sm text-gray-500">Unit: ₹{unitPrice}</div>
+                    {extra > 0 && <div className="text-sm text-amber-800">Surcharge: ₹{extra}</div>}
+                    <div className="text-xl font-semibold text-amber-900 mt-1">
+                      ₹{lineTotal}
                     </div>
-                    {/* Show breakdown */}
-                    {Number(it.extra || 0) > 0 && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        ({`₹${it.price} + ₹${it.extra} extra`})
-                      </div>
-                    )}
                   </div>
                 </div>
               );
@@ -216,7 +212,7 @@ export default function CartPage() {
       </section>
 
       {/* Right — Summary */}
-      <aside className="border border-amber-100 rounded-2xl p-6 h-fit shadow-sm bg-gradient-to-br from-white via-[#fffdfa] to-[#fef8f2] transition-all duration-300 hover:shadow-lg">
+      <aside className="border border-amber-100 rounded-2xl p-6 h-fit bg-gradient-to-br from-white via-[#fffdfa] to-[#fef8f2] transition-all duration-300 hover:shadow-lg">
         <h2 className="text-2xl font-bold mb-6 text-[#44120F] text-center">
           Order Summary
         </h2>
@@ -224,7 +220,7 @@ export default function CartPage() {
         <div className="space-y-3 text-gray-700">
           <Row label="Subtotal" value={`₹${itemsPrice}`} />
           <Row label="Shipping" value={shippingPrice ? `₹${shippingPrice}` : "FREE"} />
-          <Row label="Tax" value={`₹${taxPrice || 0}`} />
+          <Row label="Tax" value={`₹${taxPrice}`} />
         </div>
 
         <hr className="my-4 border-gray-200" />
@@ -291,7 +287,6 @@ function Row({ label, value }) {
 }
 
 function RecommendationCard({ product, onAdd }) {
-  // Use urlFor here so Image receives a safe/absolute URL
   const first = product.images?.[0] || product.image || "/placeholder.png";
   const img = urlFor(first);
 
