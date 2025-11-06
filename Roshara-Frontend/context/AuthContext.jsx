@@ -2,7 +2,6 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import PropTypes from "prop-types";
 import api from "../lib/apiClient";
 import * as authService from "../services/authService";
 import { useRouter } from "next/navigation";
@@ -88,5 +87,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-
-AuthProvider.propTypes = { children: PropTypes.node.isRequired };
