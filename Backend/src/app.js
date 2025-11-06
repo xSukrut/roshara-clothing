@@ -6,7 +6,7 @@ import dotenv from "dotenv";
 import path from "path";
 
 import authRoutes from "./routes/authRoutes.js";
-import productRoutes from "./routes/productRoutes.js"; 
+import productRoutes from "./routes/productRoutes.js";
 import collectionRoutes from "./routes/collectionRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
@@ -21,7 +21,8 @@ if (!process.env.JWT_SECRET) {
 
 const app = express();
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+const FRONTEND_URL = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/$/, "");
+
 const allowedOrigins = [
   "https://roshara.in",
   "https://www.roshara.in",
@@ -30,25 +31,64 @@ const allowedOrigins = [
   /\.onrender\.com$/,  // Render subdomains
 ];
 
+function devAllowOrigin(origin) {
+  if (!origin) return true;
+  if (/^https?:\/\/localhost(?::\d+)?$/.test(origin)) return true;
+  if (/^https?:\/\/127\.0\.0\.1(?::\d+)?$/.test(origin)) return true;
+  return false;
+}
+
 const corsOptions = {
   origin(origin, cb) {
+    // allow non-browser requests (origin === undefined)
     if (!origin) return cb(null, true);
-    const ok = allowedOrigins.some(o =>
-      o instanceof RegExp ? o.test(origin) : o === origin
-    );
-    if (ok) cb(null, true);
-    else {
-      console.warn("🚫 Blocked by CORS:", origin);
-      cb(null, false);
+
+    const ok = allowedOrigins.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin));
+
+    if (ok || (process.env.NODE_ENV !== "production" && devAllowOrigin(origin))) {
+      return cb(null, true);
     }
+
+    console.warn("🚫 Blocked by CORS:", origin);
+    return cb(new Error("Not allowed by CORS"));
   },
   credentials: true,
+  optionsSuccessStatus: 200,
 };
 
-
+// Apply CORS middleware for normal requests
 app.use(cors(corsOptions));
 
-app.use(express.json({ limit: "10mb"}));
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    const origin = req.get("Origin");
+    let allowOrigin = "*";
+    try {
+      if (!origin) {
+        allowOrigin = "*";
+      } else {
+        const ok = allowedOrigins.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin));
+        if (ok || (process.env.NODE_ENV !== "production" && devAllowOrigin(origin))) {
+          allowOrigin = origin;
+        }
+      }
+    } catch (e) {
+      allowOrigin = "*";
+    }
+
+    res.setHeader("Access-Control-Allow-Origin", allowOrigin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    );
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    return res.sendStatus(200);
+  }
+  return next();
+});
+
+app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));

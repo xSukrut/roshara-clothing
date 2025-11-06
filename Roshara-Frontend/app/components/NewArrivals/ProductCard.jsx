@@ -3,7 +3,7 @@
 
 import { motion } from "framer-motion";
 import { Search, ShoppingCart, Heart } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useCart } from "../../../context/CartContext";
 import { useWishlist } from "../../../context/WishlistContext";
@@ -23,6 +23,7 @@ function urlFor(src) {
     const u = new URL(src, API_BASE);
 
     if (["localhost", "127.0.0.1"].includes(u.hostname)) {
+      // keep relative uploads working in dev
       return API_BASE + u.pathname;
     }
 
@@ -32,7 +33,7 @@ function urlFor(src) {
 
     return u.href;
   } catch {
-    const path = src.startsWith("/") ? src : `/${src}`;
+    const path = typeof src === "string" && src.startsWith("/") ? src : `/${src}`;
     if (path.startsWith("/uploads")) return API_BASE + path;
     return "/placeholder.png";
   }
@@ -43,7 +44,7 @@ function normalizeSizes(input) {
   const arr = Array.isArray(input) ? input : [];
   const normalized = arr
     .map((s) => (typeof s === "string" ? s : s?.label || s?.value || ""))
-    .map((s) => s.trim())
+    .map((s) => (s || "").toString().trim())
     .filter(Boolean);
   return [...new Set(normalized)];
 }
@@ -63,6 +64,10 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const [customWaist, setCustomWaist] = useState("");
   const [customHips, setCustomHips] = useState("");
   const [customShoulder, setCustomShoulder] = useState("");
+
+  // Quick add panel ref for outside clicks
+  const quickAddRef = useRef(null);
+  const wrapperRef = useRef(null);
 
   // Build image list from product payload
   const rawImages = Array.isArray(product?.images) ? product.images : [];
@@ -109,8 +114,35 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       setCustomHips("");
       setCustomShoulder("");
     }
+    // reset image on product change
+    setCurrentImage(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showQuickAdd, product?._id]);
+
+  // close quick add on outside click or Escape
+  const onDocumentClick = useCallback(
+    (e) => {
+      if (!showQuickAdd) return;
+      const node = quickAddRef.current;
+      if (node && !node.contains(e.target) && !wrapperRef.current?.contains(e.target)) {
+        setShowQuickAdd(false);
+      }
+    },
+    [showQuickAdd]
+  );
+
+  useEffect(() => {
+    if (!showQuickAdd) return;
+    document.addEventListener("mousedown", onDocumentClick);
+    const onKey = (ev) => {
+      if (ev.key === "Escape") setShowQuickAdd(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocumentClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [showQuickAdd, onDocumentClick]);
 
   const heightClass = size === "lg" ? "h-[420px] md:h-[460px]" : "h-[350px]";
   const fav = inWishlist(product._id);
@@ -126,10 +158,47 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
     };
   }
 
+  const handleAddFromQuick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!selectedSize) return;
+    const customSize = buildCustomSizeObject();
+    addItem({
+      product: product._id,
+      name: product.name,
+      price: product.price,
+      image: images[0],
+      size: selectedSize,
+      qty: 1,
+      customSize,
+    });
+    openMiniCart?.();
+    setShowQuickAdd(false);
+  };
+
+  // Positioning - flip to left if card is near right edge (avoid off-screen quickadd)
+  const computeQuickAddPosition = () => {
+    try {
+      const rect = wrapperRef.current?.getBoundingClientRect();
+      if (!rect) return { right: "0.5rem", left: "auto" };
+      // if within 360px from right edge, place panel to the left
+      if (window.innerWidth - rect.right < 380) {
+        return { right: "auto", left: "-18rem" }; // place left
+      }
+      return { right: "0.5rem", left: "auto" }; // default right
+    } catch {
+      return { right: "0.5rem", left: "auto" };
+    }
+  };
+
+  // small accessibility: role=dialog and aria-modal when quick add open
+  const quickAddAria = showQuickAdd ? { role: "dialog", "aria-modal": "true" } : {};
+
   return (
     <Link
       href={`/products/${product._id}`}
       className="group relative cursor-pointer block"
+      ref={wrapperRef}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => {
         setHovering(false);
@@ -152,7 +221,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
         />
 
         {/* hover icons */}
-        <div className="absolute top-5 right-3 flex flex-col items-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
+        <div className="absolute top-5 right-3 flex flex-col items-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10">
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -203,7 +272,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
 
       {/* Info */}
       <div className="text-center mt-3">
-        <h3 className="font-semibold text-2xl text-gray-800">{product.name}</h3>
+        <h3 className="font-semibold text-2xl text-gray-800 line-clamp-1">{product.name}</h3>
         <p className="text-gray-600 text-lg font-semibold">
           ₹{Number(product.price).toLocaleString("en-IN")}
         </p>
@@ -212,9 +281,12 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       {/* Quick Add */}
       {showQuickAdd && (
         <div
-          className="absolute top-0 right-0 w-72 bg-white shadow-xl rounded p-4 z-50"
+          ref={quickAddRef}
+          {...quickAddAria}
+          style={computeQuickAddPosition()}
+          className="absolute top-0 w-72 md:w-80 bg-white shadow-xl rounded p-4 z-50"
           onClick={(e) => {
-            // ensure clicks inside quick add don't navigate
+            // prevent clicks inside quick add from navigating
             e.preventDefault();
             e.stopPropagation();
           }}
@@ -285,6 +357,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
                   onChange={(e) => setCustomBust(e.target.value)}
                   placeholder="Bust"
                   className="border rounded px-2 py-1 text-sm"
+                  aria-label="Custom bust"
                 />
                 <input
                   type="text"
@@ -292,6 +365,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
                   onChange={(e) => setCustomWaist(e.target.value)}
                   placeholder="Waist"
                   className="border rounded px-2 py-1 text-sm"
+                  aria-label="Custom waist"
                 />
                 <input
                   type="text"
@@ -299,6 +373,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
                   onChange={(e) => setCustomHips(e.target.value)}
                   placeholder="Hips"
                   className="border rounded px-2 py-1 text-sm"
+                  aria-label="Custom hips"
                 />
                 <input
                   type="text"
@@ -306,6 +381,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
                   onChange={(e) => setCustomShoulder(e.target.value)}
                   placeholder="Shoulder"
                   className="border rounded px-2 py-1 text-sm"
+                  aria-label="Custom shoulder"
                 />
               </div>
             </div>
@@ -313,30 +389,9 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
 
           <div className="flex gap-2">
             <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                // require a size before add
-                if (!selectedSize) return;
-
-                const customSize = buildCustomSizeObject();
-
-                addItem({
-                  product: product._id,
-                  name: product.name,
-                  price: product.price,
-                  image: images[0],
-                  size: selectedSize,
-                  qty: 1,
-                  customSize,
-                });
-
-                openMiniCart?.();
-                setShowQuickAdd(false);
-                // keep custom inputs state in sync (optional)
-                setShowCustomInputs(false);
-              }}
+              onClick={handleAddFromQuick}
               className="flex-1 bg-black text-white py-2 rounded"
+              aria-label="Add to bag"
             >
               Add
             </button>
