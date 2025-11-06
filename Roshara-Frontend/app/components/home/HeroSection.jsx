@@ -2,8 +2,6 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
-
 export default function HeroSection() {
   return (
     <section className="relative w-full h-screen flex overflow-hidden -mt-24">
