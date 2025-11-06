@@ -1,3 +1,4 @@
+// app/new-arrivals/page.jsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -8,11 +9,7 @@ import ProductDetails from "@components/NewArrivals/ProductDetails";
 export default function NewArrivalsPage() {
   const [all, setAll] = useState([]);
   const [selected, setSelected] = useState(null);
-
-  // loading state for nicer UX while fetching
   const [loading, setLoading] = useState(true);
-
-  // responsive card size: "lg" or "md"
   const [cardSize, setCardSize] = useState("lg");
 
   useEffect(() => {
@@ -31,14 +28,12 @@ export default function NewArrivalsPage() {
     };
   }, []);
 
-  // responsive logic: switch to "md" for small viewports
   useEffect(() => {
     const calc = () => {
       if (typeof window === "undefined") return;
       const w = window.innerWidth;
-      setCardSize(w <= 640 ? "md" : "lg"); // <=640px -> md, else lg
+      setCardSize(w <= 640 ? "md" : "lg");
     };
-
     calc();
     let t;
     const onResize = () => {
@@ -65,21 +60,14 @@ export default function NewArrivalsPage() {
   return (
     <main className="max-w-7xl mx-auto px-6 py-10">
       <h1 className="text-3xl font-bold text-center mb-2">All New Arrivals</h1>
-      <p className="text-center text-gray-600 mb-8">
-        Explore the latest additions to our collection
-      </p>
+      <p className="text-center text-gray-600 mb-8">Explore the latest additions to our collection</p>
 
       {loading ? (
         <GridSkeleton size={cardSize} />
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {newest.map((p) => (
-            <ProductCard
-              key={p._id}
-              product={p}
-              onSearch={setSelected}
-              size={cardSize}
-            />
+            <ProductCard key={p._id} product={p} onSearch={setSelected} size={cardSize} />
           ))}
         </div>
       )}
@@ -90,8 +78,7 @@ export default function NewArrivalsPage() {
 }
 
 function GridSkeleton({ size = "lg" }) {
-  // use the same reduced heights as shop page:
-  const h = size === "lg" ? "h-[340px] md:h-[380px]" : "h-[260px]";
+  const h = size === "lg" ? "h-[420px] md:h-[460px]" : "h-[300px]";
   const cells = Array.from({ length: 8 });
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

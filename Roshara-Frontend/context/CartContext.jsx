@@ -21,7 +21,6 @@ function save(items) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-// Helper: build a stable key per line item (product + size + custom signature)
 export const lineKey = (product, size, customSize) =>
   `${product}__${size || "NOSIZE"}__${customSize ? JSON.stringify(customSize) : "NOCUST"}`;
 
@@ -35,7 +34,6 @@ export function CartProvider({ children }) {
     save(items);
   }, [items]);
 
-  // helper to compare customSize objects (both null/undefined considered equal)
   function sameCustom(a, b) {
     if (!a && !b) return true;
     try {
@@ -53,26 +51,20 @@ export function CartProvider({ children }) {
     size = null,
     qty = 1,
     customSize = null,
-    extra = 0, // new: surcharge per line
+    extra = 0,
   }) => {
     if (!product) return;
-
     const productId = typeof product === "object" ? product._id : product;
-
     setItems((prev) => {
       const next = [...prev];
-      // find an existing item that matches product, size and customSize
       const idx = next.findIndex(
         (it) =>
           it.product === productId &&
           (it.size || null) === (size || null) &&
           sameCustom(it.customSize, customSize)
       );
-
       const parsedExtra = Number(extra || 0);
-
       if (idx >= 0) {
-        // merge by increasing qty (keep same extra)
         next[idx] = { ...next[idx], qty: (next[idx].qty || 1) + qty };
       } else {
         next.push({
@@ -90,8 +82,6 @@ export function CartProvider({ children }) {
     });
   };
 
-  // Set quantity per product + size (+ optional customSize)
-  // keep signature backward-compatible: setQty(product, size, qty) or setQty(product, size, qty, customSize)
   const setQty = (product, size, qty, customSize = null) => {
     const productId = typeof product === "object" ? product._id : product;
     setItems((prev) =>
@@ -107,7 +97,6 @@ export function CartProvider({ children }) {
 
   const removeItem = (product, size = null, customSize = null) => {
     const productId = typeof product === "object" ? product._id : product;
-
     setItems((prev) =>
       prev.filter(
         (it) =>
@@ -122,22 +111,18 @@ export function CartProvider({ children }) {
 
   const clear = () => setItems([]);
 
-  // Totals: include extra per-line in itemsPrice
   const itemsPrice = useMemo(
     () =>
       items.reduce(
-        (sum, it) =>
-          sum + (Number(it.price || 0) + Number(it.extra || 0)) * (it.qty || 1),
+        (sum, it) => sum + (Number(it.price || 0) + Number(it.extra || 0)) * (it.qty || 1),
         0
       ),
     [items]
   );
 
-  // You can keep your shipping rules; simple placeholders here:
   const shippingPrice = 0;
   const totalPrice = itemsPrice + shippingPrice;
 
-  // optional: to open a mini cart if you have one
   const openMiniCart = () => document.dispatchEvent(new Event("openMiniCart"));
 
   return (

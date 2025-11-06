@@ -32,9 +32,7 @@ function normalizeSizes(list) {
 }
 
 function imagesFromProduct(product) {
-  const candidates = product?.images?.length
-    ? product.images
-    : [product?.image];
+  const candidates = product?.images?.length ? product.images : [product?.image];
   const out = (candidates || []).map((img) => resolveImg(img)).filter(Boolean);
   return out.length ? out : ["/placeholder.png"];
 }
@@ -76,11 +74,11 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
     const item = {
       product: product._id,
       name: product.name,
-      price: product.price,
+      price: Number(product.price),
       image: gallery[0],
       size: selected,
       qty,
-      extra, // include surcharge
+      extra,
     };
 
     if (typeof onAddToCart === "function") {
@@ -105,37 +103,23 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
           </button>
 
           <div className="grid md:grid-cols-2 gap-6 p-6">
-            {/* LEFT: gallery */}
             <div>
               <div className="relative w-full aspect-3/4 rounded-xl overflow-hidden bg-gray-100">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={gallery[active]}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
+                <img src={gallery[active]} alt={product.name} className="w-full h-full object-cover" />
               </div>
               <div className="mt-4 flex gap-3">
                 {gallery.map((src, i) => (
                   <button
                     key={src + i}
-                    className={`relative w-20 h-24 rounded-lg overflow-hidden border ${
-                      i === active ? "border-black" : "border-gray-200"
-                    }`}
+                    className={`relative w-20 h-24 rounded-lg overflow-hidden border ${i === active ? "border-black" : "border-gray-200"}`}
                     onClick={() => setActive(i)}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={src}
-                      alt={`thumb ${i + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={src} alt={`thumb ${i + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* RIGHT: info */}
             <div>
               <div className="text-xs tracking-wide text-gray-500">ROSHARA</div>
               <h1 className="text-2xl font-semibold mt-1">{product.name}</h1>
@@ -146,24 +130,14 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
               <div className="mt-6">
                 <div className="flex items-center justify-between">
                   <div className="font-semibold">Size Chart</div>
-                  <button
-                    type="button"
-                    onClick={() => setShowGuide(true)}
-                    className="text-sm underline underline-offset-4 text-gray-600 hover:text-black"
-                  >
+                  <button type="button" onClick={() => setShowGuide(true)} className="text-sm underline underline-offset-4 text-gray-600 hover:text-black">
                     Size Guide
                   </button>
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-3">
                   {sizes.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setSelected(s)}
-                      className={`min-w-48px h-10 rounded-full border px-3 text-sm ${
-                        selected === s ? "border-black" : "border-gray-300"
-                      } hover:border-black`}
-                    >
+                    <button key={s} onClick={() => setSelected(s)} className={`min-w-48px h-10 rounded-full border px-3 text-sm ${selected === s ? "border-black" : "border-gray-300"} hover:border-black`}>
                       {s}
                     </button>
                   ))}
@@ -177,46 +151,25 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
                     <Spec label="Shoulder" value={measures.shoulder} />
                   </div>
                 )}
-                <div className="text-xs text-gray-500 mt-1">
-                  All measurements in inches.
-                </div>
+                <div className="text-xs text-gray-500 mt-1">All measurements in inches.</div>
                 {err && <div className="mt-2 text-sm text-red-600">{err}</div>}
               </div>
 
               <div className="mt-5 flex items-center gap-3">
                 <div className="text-sm text-gray-600">Qty</div>
                 <div className="flex items-center gap-2">
-                  <button
-                    className="w-10 h-10 border rounded hover:bg-gray-50"
-                    onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  >
-                    –
-                  </button>
+                  <button className="w-10 h-10 border rounded hover:bg-gray-50" onClick={() => setQty((q) => Math.max(1, q - 1))}>–</button>
                   <div className="w-10 text-center">{qty}</div>
-                  <button
-                    className="w-10 h-10 border rounded hover:bg-gray-50"
-                    onClick={() => setQty((q) => q + 1)}
-                  >
-                    +
-                  </button>
+                  <button className="w-10 h-10 border rounded hover:bg-gray-50" onClick={() => setQty((q) => q + 1)}>+</button>
                 </div>
               </div>
 
               <div className="mt-6 flex gap-3">
-                <button
-                  className="bg-black text-white px-6 py-3 rounded hover:bg-gray-800"
-                  onClick={addToCart}
-                >
-                  Add to Cart
-                </button>
+                <button className="bg-black text-white px-6 py-3 rounded hover:bg-gray-800" onClick={addToCart}>Add to Cart</button>
               </div>
 
-              <div className="mt-4 text-sm text-gray-600">
-                🚚 Free Delivery On Orders Over ₹2000
-              </div>
-              <div className="mt-2 text-xs text-gray-500">
-                Note: Sizes <strong>XL and above</strong> include an additional ₹{EXTRA_FOR_LARGE}.
-              </div>
+              <div className="mt-4 text-sm text-gray-600">🚚 Free Delivery On Orders Over ₹2000</div>
+              <div className="mt-2 text-xs text-gray-500">Note: Sizes <strong>XL and above</strong> include an additional ₹{EXTRA_FOR_LARGE}.</div>
             </div>
           </div>
         </div>
@@ -242,19 +195,10 @@ function SizeGuideModal({ onClose }) {
       <div className="bg-white w-full max-w-3xl rounded-xl overflow-hidden shadow-2xl">
         <div className="flex items-center justify-between px-5 py-3 border-b">
           <h3 className="text-lg font-semibold">Size Guide</h3>
-          <button
-            onClick={onClose}
-            className="text-sm text-gray-600 hover:text-black"
-          >
-            Close
-          </button>
+          <button onClick={onClose} className="text-sm text-gray-600 hover:text-black">Close</button>
         </div>
         <div className="max-h-[75vh] overflow-auto p-5 space-y-5">
-          <img
-            src="/size-guide.jpg"
-            alt="Roshara Size Guide"
-            className="w-full h-auto rounded"
-          />
+          <img src="/size-guide.jpg" alt="Roshara Size Guide" className="w-full h-auto rounded" />
         </div>
       </div>
     </div>

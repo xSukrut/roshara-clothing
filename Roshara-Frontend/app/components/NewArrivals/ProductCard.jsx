@@ -9,7 +9,6 @@ import { useCart } from "../../../context/CartContext";
 import { useWishlist } from "../../../context/WishlistContext";
 import { ROSHARA_SIZES } from "../../constants/sizes";
 
-// Public API origin, e.g. "https://roshara-clothing.onrender.com"
 const API_BASE =
   (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api")
     .replace(/\/$/, "")
@@ -20,32 +19,25 @@ const EXTRA_FOR_LARGE = 200;
 function isLargeSize(size) {
   if (!size) return false;
   const s = String(size).toUpperCase().replace(/\s+/g, "");
-  // common patterns: XL, XXL, 2XL, 3XL, etc.
   if (s === "XL" || s === "XXL") return true;
-  const m = s.match(/^(\d+)XL$/); // "2XL", "3XL"
+  // match "2XL", "3XL", "4XL" or "2X", "3X"
+  const m = s.match(/^(\d+)XL$/);
   if (m && Number(m[1]) >= 2) return true;
-  // also match "2X", "3X" -> sometimes used
   const m2 = s.match(/^(\d+)X$/);
   if (m2 && Number(m2[1]) >= 2) return true;
   return false;
 }
 
-// Normalize ANY image-ish string to a usable, public URL
 function urlFor(src) {
   if (!src) return "/placeholder.png";
-
   try {
     const u = new URL(src, API_BASE);
-
     if (["localhost", "127.0.0.1"].includes(u.hostname)) {
-      // keep relative uploads working in dev
       return API_BASE + u.pathname;
     }
-
     if (u.pathname.startsWith("/uploads")) {
       return API_BASE + u.pathname;
     }
-
     return u.href;
   } catch {
     const path = typeof src === "string" && src.startsWith("/") ? src : `/${src}`;
@@ -54,7 +46,6 @@ function urlFor(src) {
   }
 }
 
-// Normalize sizes to simple strings
 function normalizeSizes(input) {
   const arr = Array.isArray(input) ? input : [];
   const normalized = arr
@@ -74,17 +65,16 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const [showCustomInputs, setShowCustomInputs] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
 
-  // custom measurements state
+  // custom measurements
   const [customBust, setCustomBust] = useState("");
   const [customWaist, setCustomWaist] = useState("");
   const [customHips, setCustomHips] = useState("");
   const [customShoulder, setCustomShoulder] = useState("");
 
-  // Quick add panel ref for outside clicks
   const quickAddRef = useRef(null);
   const wrapperRef = useRef(null);
 
-  // Build image list from product payload
+  // images
   const rawImages = Array.isArray(product?.images) ? product.images : [];
   let images = rawImages
     .map((img) => {
@@ -96,12 +86,10 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
     })
     .filter(Boolean);
 
-  // Fallback to product.image or placeholder
   if (images.length === 0) {
     images = [urlFor(product?.image) || "/placeholder.png"];
   }
 
-  // Cycle on hover
   useEffect(() => {
     let t;
     if (hovering && images.length > 1) {
@@ -110,31 +98,26 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
     return () => clearInterval(t);
   }, [hovering, images.length]);
 
-  // sizes: prefer product.sizes; else use ROSHARA_SIZES
   const sizeOptions = (() => {
     const norm = normalizeSizes(product?.sizes);
     return norm.length ? norm : ROSHARA_SIZES;
   })();
 
-  // preselect first size when opening panel
   useEffect(() => {
     if (showQuickAdd) {
       setSelectedSize((prev) => prev ?? sizeOptions[0]);
     } else {
       setSelectedSize(null);
-      // reset custom inputs when panel closes
       setShowCustomInputs(false);
       setCustomBust("");
       setCustomWaist("");
       setCustomHips("");
       setCustomShoulder("");
     }
-    // reset image on product change
     setCurrentImage(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showQuickAdd, product?._id]);
 
-  // close quick add on outside click or Escape
   const onDocumentClick = useCallback(
     (e) => {
       if (!showQuickAdd) return;
@@ -163,7 +146,6 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const fav = inWishlist(product._id);
 
   function buildCustomSizeObject() {
-    // If all fields are empty, return null
     if (!customBust && !customWaist && !customHips && !customShoulder) return null;
     return {
       bust: customBust ? String(customBust).trim() : "",
@@ -176,41 +158,39 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const handleAddFromQuick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!selectedSize && !buildCustomSizeObject()) return;
     const customSize = buildCustomSizeObject();
+    // if neither size nor custom provided reject
+    if (!selectedSize && !customSize) return;
 
     const extra = isLargeSize(selectedSize) ? EXTRA_FOR_LARGE : 0;
 
     addItem({
       product: product._id,
       name: product.name,
-      price: product.price,
+      price: Number(product.price),
       image: images[0],
       size: selectedSize,
       qty: 1,
       customSize,
-      extra, // <-- store surcharge on the line
+      extra, // store surcharge per line
     });
     openMiniCart?.();
     setShowQuickAdd(false);
   };
 
-  // Positioning - flip to left if card is near right edge (avoid off-screen quickadd)
   const computeQuickAddPosition = () => {
     try {
       const rect = wrapperRef.current?.getBoundingClientRect();
       if (!rect) return { right: "0.5rem", left: "auto" };
-      // if within 360px from right edge, place panel to the left
       if (window.innerWidth - rect.right < 380) {
-        return { right: "auto", left: "-18rem" }; // place left
+        return { right: "auto", left: "-18rem" };
       }
-      return { right: "0.5rem", left: "auto" }; // default right
+      return { right: "0.5rem", left: "auto" };
     } catch {
       return { right: "0.5rem", left: "auto" };
     }
   };
 
-  // small accessibility: role=dialog and aria-modal when quick add open
   const quickAddAria = showQuickAdd ? { role: "dialog", "aria-modal": "true" } : {};
 
   return (
@@ -219,9 +199,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       className="group relative cursor-pointer block"
       ref={wrapperRef}
       onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => {
-        setHovering(false);
-      }}
+      onMouseLeave={() => setHovering(false)}
       aria-label={`Open ${product.name}`}
     >
       <motion.div
@@ -229,7 +207,6 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
         whileHover={{ scale: 1.02 }}
         transition={{ duration: 0.2 }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={images[currentImage]}
           alt={product?.name || "Product"}
@@ -239,7 +216,6 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
           }}
         />
 
-        {/* hover icons */}
         <div className="absolute top-5 right-3 flex flex-col items-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10">
           <button
             onClick={(e) => {
@@ -289,7 +265,6 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
         </div>
       </motion.div>
 
-      {/* Info */}
       <div className="text-center mt-3">
         <h3 className="font-semibold text-2xl text-gray-800 line-clamp-1">{product.name}</h3>
         <p className="text-gray-600 text-lg font-semibold">
@@ -297,7 +272,6 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
         </p>
       </div>
 
-      {/* Quick Add */}
       {showQuickAdd && (
         <div
           ref={quickAddRef}
@@ -305,7 +279,6 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
           style={computeQuickAddPosition()}
           className="absolute top-0 w-72 md:w-80 bg-white shadow-xl rounded p-4 z-50"
           onClick={(e) => {
-            // prevent clicks inside quick add from navigating
             e.preventDefault();
             e.stopPropagation();
           }}
@@ -313,7 +286,6 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="relative w-14 h-14 rounded overflow-hidden bg-gray-100">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={images[0]}
                   alt={product.name}
@@ -327,7 +299,6 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
               </div>
             </div>
 
-            {/* Custom toggle */}
             <button
               onClick={(e) => {
                 e.preventDefault();
@@ -341,7 +312,6 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
             </button>
           </div>
 
-          {/* Size selection */}
           <div className="mb-3">
             <p className="text-sm font-semibold mb-2">Select Size</p>
             <div className="flex gap-2 flex-wrap">
@@ -368,65 +338,21 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
             </div>
           </div>
 
-          {/* Custom input fields */}
           {showCustomInputs && (
             <div className="mb-3 space-y-2">
               <p className="text-sm font-semibold">Custom measurements (in inches)</p>
               <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  value={customBust}
-                  onChange={(e) => setCustomBust(e.target.value)}
-                  placeholder="Bust"
-                  className="border rounded px-2 py-1 text-sm"
-                  aria-label="Custom bust"
-                />
-                <input
-                  type="text"
-                  value={customWaist}
-                  onChange={(e) => setCustomWaist(e.target.value)}
-                  placeholder="Waist"
-                  className="border rounded px-2 py-1 text-sm"
-                  aria-label="Custom waist"
-                />
-                <input
-                  type="text"
-                  value={customHips}
-                  onChange={(e) => setCustomHips(e.target.value)}
-                  placeholder="Hips"
-                  className="border rounded px-2 py-1 text-sm"
-                  aria-label="Custom hips"
-                />
-                <input
-                  type="text"
-                  value={customShoulder}
-                  onChange={(e) => setCustomShoulder(e.target.value)}
-                  placeholder="Shoulder"
-                  className="border rounded px-2 py-1 text-sm"
-                  aria-label="Custom shoulder"
-                />
+                <input type="text" value={customBust} onChange={(e) => setCustomBust(e.target.value)} placeholder="Bust" className="border rounded px-2 py-1 text-sm" />
+                <input type="text" value={customWaist} onChange={(e) => setCustomWaist(e.target.value)} placeholder="Waist" className="border rounded px-2 py-1 text-sm" />
+                <input type="text" value={customHips} onChange={(e) => setCustomHips(e.target.value)} placeholder="Hips" className="border rounded px-2 py-1 text-sm" />
+                <input type="text" value={customShoulder} onChange={(e) => setCustomShoulder(e.target.value)} placeholder="Shoulder" className="border rounded px-2 py-1 text-sm" />
               </div>
             </div>
           )}
 
           <div className="flex gap-2">
-            <button
-              onClick={handleAddFromQuick}
-              className="flex-1 bg-black text-white py-2 rounded"
-              aria-label="Add to bag"
-            >
-              Add
-            </button>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowQuickAdd(false);
-              }}
-              className="flex-1 border border-gray-400 py-2 rounded"
-            >
-              Cancel
-            </button>
+            <button onClick={handleAddFromQuick} className="flex-1 bg-black text-white py-2 rounded" aria-label="Add to bag">Add</button>
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowQuickAdd(false); }} className="flex-1 border border-gray-400 py-2 rounded">Cancel</button>
           </div>
         </div>
       )}
