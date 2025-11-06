@@ -119,6 +119,8 @@ export default function CheckoutPage() {
         quantity: it.qty ?? it.quantity ?? 1,
         price: it.price,
         size: it.size,
+        customSize: it.customSize || null,
+        extra: Number(it.extra || 0), // include surcharge on each item
       }));
 
       const payload = {
@@ -166,6 +168,9 @@ export default function CheckoutPage() {
   if (loading) return <div className="p-6">Loading…</div>;
   if (!user) return null;
 
+  // compute totalExtra for display (optional)
+  const totalExtra = items.reduce((s, it) => s + (Number(it.extra || 0) * (it.qty || 1)), 0);
+
   return (
     <div className="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
       {/* Bag / Items */}
@@ -186,6 +191,9 @@ export default function CheckoutPage() {
                 <div className="flex-1">
                   <div className="font-medium">{it.name}</div>
                   <div className="text-sm text-gray-600">₹{it.price}</div>
+                  {it.extra && Number(it.extra) > 0 && (
+                    <div className="text-sm text-gray-600">Surcharge: ₹{it.extra}</div>
+                  )}
                   {it.size && (
                     <div className="text-sm text-gray-600">Size: {it.size}</div>
                   )}
@@ -388,6 +396,13 @@ export default function CheckoutPage() {
           <span>Items Total</span>
           <span>₹{estimated.subtotal}</span>
         </div>
+
+        {totalExtra > 0 && (
+          <div className="flex justify-between text-sm mt-1">
+            <span>Size surcharge</span>
+            <span>₹{totalExtra}</span>
+          </div>
+        )}
 
         <div className="flex justify-between text-sm mt-1">
           <span>Shipping</span>

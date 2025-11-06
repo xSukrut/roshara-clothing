@@ -1,3 +1,4 @@
+// app/components/NewArrivals/ProductDetails.jsx
 "use client";
 import { ROSHARA_SIZES } from "../../constants/sizes";
 import { useMemo, useState } from "react";
@@ -38,6 +39,19 @@ function imagesFromProduct(product) {
   return out.length ? out : ["/placeholder.png"];
 }
 
+// surcharge logic
+const EXTRA_FOR_LARGE = 200;
+function isLargeSize(size) {
+  if (!size) return false;
+  const s = String(size).toUpperCase().replace(/\s+/g, "");
+  if (s === "XL" || s === "XXL") return true;
+  const m = s.match(/^(\d+)XL$/);
+  if (m && Number(m[1]) >= 2) return true;
+  const m2 = s.match(/^(\d+)X$/);
+  if (m2 && Number(m2[1]) >= 2) return true;
+  return false;
+}
+
 export default function ProductDetails({ product, onClose, onAddToCart }) {
   const { addItem, openMiniCart } = useCart();
   const gallery = useMemo(() => imagesFromProduct(product), [product]);
@@ -56,6 +70,9 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
       setErr("Please select a size.");
       return;
     }
+
+    const extra = isLargeSize(selected) ? EXTRA_FOR_LARGE : 0;
+
     const item = {
       product: product._id,
       name: product.name,
@@ -63,6 +80,7 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
       image: gallery[0],
       size: selected,
       qty,
+      extra, // include surcharge
     };
 
     if (typeof onAddToCart === "function") {
@@ -195,6 +213,9 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
 
               <div className="mt-4 text-sm text-gray-600">
                 🚚 Free Delivery On Orders Over ₹2000
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                Note: Sizes <strong>XL and above</strong> include an additional ₹{EXTRA_FOR_LARGE}.
               </div>
             </div>
           </div>

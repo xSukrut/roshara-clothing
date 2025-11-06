@@ -111,6 +111,8 @@ export default function CartPage() {
               // Add customSize JSON into the key so React can distinguish different custom entries
               const customKey = it.customSize ? JSON.stringify(it.customSize) : "";
 
+              const linePrice = (Number(it.price || 0) + Number(it.extra || 0)) * (it.qty || 1);
+
               return (
                 <div
                   key={`${it.product}-${it.size || "NOSIZE"}-${customKey}`}
@@ -159,6 +161,13 @@ export default function CartPage() {
                         </div>
                       ) : null}
 
+                      {/* show extra if present */}
+                      {it.extra && Number(it.extra) > 0 && (
+                        <div className="text-sm text-gray-500 mt-1">
+                          Extra for large size: <span className="font-medium">₹{it.extra}</span>
+                        </div>
+                      )}
+
                       <div className="mt-2 inline-flex items-center gap-2">
                         <span className="text-sm text-gray-500">Qty</span>
                         <div className="flex items-center bg-white border border-gray-300 rounded-full shadow-sm overflow-hidden">
@@ -187,10 +196,17 @@ export default function CartPage() {
                   </div>
 
                   {/* Price */}
-                  <div className="ml-auto sm:ml-0">
+                  <div className="ml-auto sm:ml-0 text-right">
+                    <div className="text-sm text-gray-500">Line total</div>
                     <div className="text-xl font-semibold text-amber-900">
-                      ₹{it.price}
+                      ₹{linePrice}
                     </div>
+                    {/* Show breakdown */}
+                    {Number(it.extra || 0) > 0 && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        ({`₹${it.price} + ₹${it.extra} extra`})
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -208,7 +224,7 @@ export default function CartPage() {
         <div className="space-y-3 text-gray-700">
           <Row label="Subtotal" value={`₹${itemsPrice}`} />
           <Row label="Shipping" value={shippingPrice ? `₹${shippingPrice}` : "FREE"} />
-          <Row label="Tax" value={`₹${taxPrice}`} />
+          <Row label="Tax" value={`₹${taxPrice || 0}`} />
         </div>
 
         <hr className="my-4 border-gray-200" />

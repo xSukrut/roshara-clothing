@@ -15,6 +15,21 @@ const API_BASE =
     .replace(/\/$/, "")
     .replace(/\/api$/, "");
 
+// surcharge for XL and above
+const EXTRA_FOR_LARGE = 200;
+function isLargeSize(size) {
+  if (!size) return false;
+  const s = String(size).toUpperCase().replace(/\s+/g, "");
+  // common patterns: XL, XXL, 2XL, 3XL, etc.
+  if (s === "XL" || s === "XXL") return true;
+  const m = s.match(/^(\d+)XL$/); // "2XL", "3XL"
+  if (m && Number(m[1]) >= 2) return true;
+  // also match "2X", "3X" -> sometimes used
+  const m2 = s.match(/^(\d+)X$/);
+  if (m2 && Number(m2[1]) >= 2) return true;
+  return false;
+}
+
 // Normalize ANY image-ish string to a usable, public URL
 function urlFor(src) {
   if (!src) return "/placeholder.png";
@@ -161,8 +176,11 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const handleAddFromQuick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!selectedSize) return;
+    if (!selectedSize && !buildCustomSizeObject()) return;
     const customSize = buildCustomSizeObject();
+
+    const extra = isLargeSize(selectedSize) ? EXTRA_FOR_LARGE : 0;
+
     addItem({
       product: product._id,
       name: product.name,
@@ -171,6 +189,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       size: selectedSize,
       qty: 1,
       customSize,
+      extra, // <-- store surcharge on the line
     });
     openMiniCart?.();
     setShowQuickAdd(false);
@@ -343,6 +362,9 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
                   {s}
                 </button>
               ))}
+            </div>
+            <div className="text-xs text-gray-500 mt-2">
+              Note: Sizes <strong>XL and above</strong> include a ₹{EXTRA_FOR_LARGE} surcharge.
             </div>
           </div>
 

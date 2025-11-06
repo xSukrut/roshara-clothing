@@ -13,6 +13,22 @@ import User from "../models/userModel.js";
  * - saves order
  * - increments coupon.usedCount **only if coupon.special === true** (atomic $inc)
  */
+
+// surcharge rule (server-side source of truth)
+const SURCHARGE_FOR_XL_AND_ABOVE = 200;
+function isLargeSizeLabel(size) {
+  if (!size) return false;
+  const s = String(size).toUpperCase().replace(/\s+/g, "");
+  if (s === "XL" || s === "XXL") return true;
+  // match "2XL", "3XL", "4XL"...
+  const m = s.match(/^(\d+)XL$/);
+  if (m && Number(m[1]) >= 2) return true;
+  // match "2X", "3X" sometimes used
+  const m2 = s.match(/^(\d+)X$/);
+  if (m2 && Number(m2[1]) >= 2) return true;
+  return false;
+}
+
 export const createOrder = asyncHandler(async (req, res) => {
   const {
     orderItems,
@@ -41,13 +57,25 @@ export const createOrder = asyncHandler(async (req, res) => {
   }
 
   // compute items price and hydrate name/price
+  // IMPORTANT: server decides 'extra' based on size (do not trust client)
   let itemsPrice = 0;
   for (const item of orderItemsNorm) {
     const prod = await Product.findById(item.product);
     if (!prod) return res.status(400).json({ message: `Product ${item.product} not found` });
-    itemsPrice += Number(prod.price) * (item.quantity || 1);
+
+    const qty = Number(item.quantity || 1);
+
+    // server-side surcharge determination
+    const size = item.size || null;
+    const extra = isLargeSizeLabel(size) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
+
+    // hydrate item
     item.name = prod.name;
     item.price = prod.price;
+    item.extra = Number(extra); // store surcharge per single unit
+
+    // itemsPrice includes product price + surcharge per unit times qty
+    itemsPrice += (Number(prod.price) + Number(extra)) * qty;
   }
 
   // Coupon logic (ROSHARA10 = 10% above 1899)
@@ -89,7 +117,7 @@ export const createOrder = asyncHandler(async (req, res) => {
   // COD fee
   const codFee = paymentMethod === "cod" ? 90 : 0;
 
-  const totalPrice = itemsPrice - discountAmount + shippingPrice + taxPrice + codFee;
+  const totalPrice = itemsPrice - discountAmount + Number(shippingPrice || 0) + Number(taxPrice || 0) + codFee;
 
   const order = new Order({
     user: req.user._id,
@@ -117,7 +145,7 @@ export const createOrder = asyncHandler(async (req, res) => {
         await Coupon.findByIdAndUpdate(
           coupon._id,
           { $inc: { usedCount: 1 } },
-          { new: true } // not strictly needed, but ok
+          { new: true }
         );
       } else {
         // If you want to track total uses for all coupons, uncomment below:

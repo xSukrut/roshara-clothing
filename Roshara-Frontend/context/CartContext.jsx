@@ -45,7 +45,16 @@ export function CartProvider({ children }) {
     }
   }
 
-  const addItem = ({ product, name, price, image, size = null, qty = 1, customSize = null }) => {
+  const addItem = ({
+    product,
+    name,
+    price,
+    image,
+    size = null,
+    qty = 1,
+    customSize = null,
+    extra = 0, // new: surcharge per line
+  }) => {
     if (!product) return;
 
     const productId = typeof product === "object" ? product._id : product;
@@ -60,8 +69,10 @@ export function CartProvider({ children }) {
           sameCustom(it.customSize, customSize)
       );
 
+      const parsedExtra = Number(extra || 0);
+
       if (idx >= 0) {
-        // merge by increasing qty
+        // merge by increasing qty (keep same extra)
         next[idx] = { ...next[idx], qty: (next[idx].qty || 1) + qty };
       } else {
         next.push({
@@ -72,6 +83,7 @@ export function CartProvider({ children }) {
           size: size || null,
           qty: Number(qty) || 1,
           customSize: customSize || null,
+          extra: parsedExtra,
         });
       }
       return next;
@@ -110,9 +122,14 @@ export function CartProvider({ children }) {
 
   const clear = () => setItems([]);
 
-  // Totals
+  // Totals: include extra per-line in itemsPrice
   const itemsPrice = useMemo(
-    () => items.reduce((sum, it) => sum + Number(it.price) * (it.qty || 1), 0),
+    () =>
+      items.reduce(
+        (sum, it) =>
+          sum + (Number(it.price || 0) + Number(it.extra || 0)) * (it.qty || 1),
+        0
+      ),
     [items]
   );
 
