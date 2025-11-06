@@ -1,7 +1,8 @@
 // app/auth/register/page.jsx
 "use client";
+export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import { useRouter } from "next/navigation";
 
@@ -24,7 +25,7 @@ export default function RegisterPage() {
       router.push("/");
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || err.message || "Registration failed");
+      setError(err?.response?.data?.message || err.message || "Registration failed");
     } finally {
       setBusy(false);
     }

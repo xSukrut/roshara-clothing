@@ -1,7 +1,8 @@
 // app/auth/login/page.jsx
 "use client";
+export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -25,7 +26,8 @@ export default function LoginPage() {
       router.push(next);
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || err.message || "Login failed");
+      // network / axios error shape compatibility
+      setError(err?.response?.data?.message || err.message || "Login failed");
     } finally {
       setBusy(false);
     }
