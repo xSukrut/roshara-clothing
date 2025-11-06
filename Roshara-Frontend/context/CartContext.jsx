@@ -11,7 +11,18 @@ function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const parsed = JSON.parse(raw || "[]");
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Normalize old items: ensure numeric price, qty and extra fields exist
+    return parsed.map((it) => ({
+      product: it.product,
+      name: it.name,
+      price: Number(it.price || 0),
+      image: it.image || "/placeholder.png",
+      size: it.size || null,
+      qty: Number(it.qty || it.quantity || 1),
+      customSize: it.customSize || null,
+      extra: Number(it.extra || 0),
+    }));
   } catch {
     return [];
   }
@@ -21,6 +32,7 @@ function save(items) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
+// Helper: build a stable key per line item (product + size + custom signature)
 export const lineKey = (product, size, customSize) =>
   `${product}__${size || "NOSIZE"}__${customSize ? JSON.stringify(customSize) : "NOCUST"}`;
 
@@ -34,6 +46,7 @@ export function CartProvider({ children }) {
     save(items);
   }, [items]);
 
+  // helper to compare customSize objects (both null/undefined considered equal)
   function sameCustom(a, b) {
     if (!a && !b) return true;
     try {
@@ -51,10 +64,11 @@ export function CartProvider({ children }) {
     size = null,
     qty = 1,
     customSize = null,
-    extra = 0,
+    extra = 0, // surcharge per unit
   }) => {
     if (!product) return;
     const productId = typeof product === "object" ? product._id : product;
+
     setItems((prev) => {
       const next = [...prev];
       const idx = next.findIndex(
@@ -63,8 +77,11 @@ export function CartProvider({ children }) {
           (it.size || null) === (size || null) &&
           sameCustom(it.customSize, customSize)
       );
+
       const parsedExtra = Number(extra || 0);
+
       if (idx >= 0) {
+        // increase qty and keep existing extra
         next[idx] = { ...next[idx], qty: (next[idx].qty || 1) + qty };
       } else {
         next.push({
@@ -111,10 +128,12 @@ export function CartProvider({ children }) {
 
   const clear = () => setItems([]);
 
+  // Totals: include extra per-line in itemsPrice
   const itemsPrice = useMemo(
     () =>
       items.reduce(
-        (sum, it) => sum + (Number(it.price || 0) + Number(it.extra || 0)) * (it.qty || 1),
+        (sum, it) =>
+          sum + (Number(it.price || 0) + Number(it.extra || 0)) * (it.qty || 1),
         0
       ),
     [items]
