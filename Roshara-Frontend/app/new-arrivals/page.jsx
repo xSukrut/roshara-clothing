@@ -1,4 +1,3 @@
-// app/new-arrivals/page.jsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -75,7 +74,12 @@ export default function NewArrivalsPage() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {newest.map((p) => (
-            <ProductCard key={p._id} product={p} onSearch={setSelected} size={cardSize} />
+            <ProductCard
+              key={p._id}
+              product={p}
+              onSearch={setSelected}
+              size={cardSize}
+            />
           ))}
         </div>
       )}
@@ -86,7 +90,8 @@ export default function NewArrivalsPage() {
 }
 
 function GridSkeleton({ size = "lg" }) {
-  const h = size === "lg" ? "h-[420px] md:h-[460px]" : "h-[300px]"; // match ProductCard sizes
+  // use the same reduced heights as shop page:
+  const h = size === "lg" ? "h-[340px] md:h-[380px]" : "h-[260px]";
   const cells = Array.from({ length: 8 });
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
