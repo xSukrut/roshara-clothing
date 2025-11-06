@@ -1,65 +1,47 @@
+// app/auth/register/page.jsx
 "use client";
+
 import { useState } from "react";
-import { useAuth } from "@context/AuthContext";
+import { useAuth } from "../../../context/AuthContext";
 import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
   const { register } = useAuth();
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    const res = await register(form.name, form.email, form.password);
-    if (res.success) router.push("/auth/login");
-    else setError(res.message);
+    setError("");
+    setBusy(true);
+    try {
+      await register(name.trim(), email.trim(), password);
+      router.push("/");
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || err.message || "Registration failed");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-      <div className="bg-white p-8 rounded-lg shadow-md w-96">
-        <h2 className="text-2xl font-semibold mb-4">Register</h2>
-        {error && <p className="text-red-500 mb-2">{error}</p>}
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Full Name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full p-2 border rounded mb-3"
-            required
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="w-full p-2 border rounded mb-3"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="w-full p-2 border rounded mb-4"
-            required
-          />
-          <button
-            type="submit"
-            className="w-full bg-black text-white py-2 rounded hover:bg-gray-800 transition"
-          >
-            Register
-          </button>
-        </form>
-        <p className="text-sm mt-4 text-center">
-          Already have an account?{" "}
-          <a href="/auth/login" className="text-blue-500 hover:underline">
-            Login
-          </a>
-        </p>
-      </div>
+    <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow mt-8">
+      <h2 className="text-2xl font-semibold mb-4">Register</h2>
+      {error && <div className="text-red-600 mb-3">{error}</div>}
+      <form onSubmit={onSubmit} className="space-y-3">
+        <input className="w-full border rounded px-3 py-2" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <input className="w-full border rounded px-3 py-2" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input className="w-full border rounded px-3 py-2" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <button disabled={busy} className="w-full bg-black text-white py-2 rounded">
+          {busy ? "Creating..." : "Register"}
+        </button>
+      </form>
     </div>
   );
 }

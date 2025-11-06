@@ -1,98 +1,44 @@
-// models/orderModel.js
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
-const orderItemSchema = new mongoose.Schema(
+const userSchema = new mongoose.Schema(
   {
-    product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
+    name: {
+      type: String,
       required: true,
     },
-    name: { type: String, required: true },
-    price: { type: Number, required: true }, // base product price (per unit)
-    extra: { type: Number, default: 0 }, // server-calculated surcharge per unit (e.g., +200 for XL+)
-    quantity: { type: Number, required: true, default: 1, min: 1 },
-    size: { type: String, default: null },
-    customSize: {
-      // optional custom measurements object (may be null)
-      bust: { type: String },
-      waist: { type: String },
-      hips: { type: String },
-      shoulder: { type: String },
-    },
-  },
-  { _id: false } // keep subdocs compact; main array will have its own ids via parent doc
-);
-
-const shippingAddressSchema = new mongoose.Schema(
-  {
-    address: { type: String, required: true },
-    city: { type: String, required: true },
-    postalCode: { type: String, required: true },
-    country: { type: String, required: true, default: "India" },
-    phone: { type: String }, // optional
-  },
-  { _id: false }
-);
-
-const orderSchema = new mongoose.Schema(
-  {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-
-    orderItems: {
-      type: [orderItemSchema],
+    email: {
+      type: String,
       required: true,
-      default: [],
+      unique: true,
+      lowercase: true,
+      trim: true,
     },
-
-    shippingAddress: { type: shippingAddressSchema },
-
-    paymentMethod: { type: String, enum: ["cod", "upi", "card", "other"], default: "cod" },
-
-    // numeric breakdown
-    itemsPrice: { type: Number, required: true, default: 0 }, // includes extras
-    discountAmount: { type: Number, required: true, default: 0 },
-    shippingPrice: { type: Number, required: true, default: 0 },
-    taxPrice: { type: Number, required: true, default: 0 },
-    totalPrice: { type: Number, required: true, default: 0 },
-
-    // coupon applied (optional)
-    couponCode: { type: String, default: null },
-
-    // simple payment / order status tracking
-    status: {
+    password: {
       type: String,
-      enum: ["pending", "pending_verification", "paid", "shipped", "delivered", "rejected", "cancelled"],
-      default: "pending",
+      required: true,
     },
-    paymentStatus: {
+    role: {
       type: String,
-      enum: ["pending", "pending_verification", "paid", "rejected"],
-      default: "pending",
+      enum: ["customer", "admin"],
+      default: "customer",
     },
-
-    // UPI / payment proof
-    upi: {
-      txnId: { type: String },
-      submittedAt: { type: Date },
-      // you can add proofImage, notes, etc.
-    },
-
-    paid: { type: Boolean, default: false },
-    paidAt: { type: Date, default: null },
-
-    // optional meta
-    notes: { type: String },
-
-    // keep a simple audit trail
-    deliveredAt: { type: Date, default: null },
-    cancelledAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
 
-// useful index for admin search by user / createdAt
-orderSchema.index({ user: 1, createdAt: -1 });
+// 🔐 Hash password before saving (only if modified)
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
 
-const Order = mongoose.model("Order", orderSchema);
-export default Order;
+// ✅ Compare entered password with hashed password
+userSchema.methods.matchPassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
+
+const User = mongoose.model("User", userSchema);
+export default User;

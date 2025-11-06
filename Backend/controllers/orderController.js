@@ -5,15 +5,6 @@ import Product from "../models/productModel.js";
 import Coupon from "../models/couponModel.js";
 import User from "../models/userModel.js";
 
-/**
- * Create order
- * - normalizes orderItems (product id + qty)
- * - computes item prices by reading Product
- * - validates coupon (if any)
- * - saves order
- * - increments coupon.usedCount **only if coupon.special === true** (atomic $inc)
- */
-
 // surcharge rule (server-side source of truth)
 const SURCHARGE_FOR_XL_AND_ABOVE = 200;
 function isLargeSizeLabel(size) {
@@ -23,141 +14,159 @@ function isLargeSizeLabel(size) {
   // match "2XL", "3XL", "4XL"...
   const m = s.match(/^(\d+)XL$/);
   if (m && Number(m[1]) >= 2) return true;
-  // match "2X", "3X" sometimes used
+  // match "2X", "3X"
   const m2 = s.match(/^(\d+)X$/);
   if (m2 && Number(m2[1]) >= 2) return true;
   return false;
 }
 
 export const createOrder = asyncHandler(async (req, res) => {
-  const {
-    orderItems,
-    shippingAddress,
-    paymentMethod,
-    taxPrice = 0,
-    shippingPrice = 0,
-    couponCode = null,
-  } = req.body;
+  try {
+    console.log(">>> createOrder called -", new Date().toISOString());
+    console.log("User present:", !!req.user, req.user && { id: req.user._id, email: req.user.email });
+    // log payload trimmed to avoid huge logs
+    try { console.log("Payload (trim):", JSON.stringify(req.body).slice(0, 2000)); } catch (e) {}
 
-  if (!Array.isArray(orderItems) || orderItems.length === 0) {
-    return res.status(400).json({ message: "No order items" });
-  }
+    const {
+      orderItems,
+      shippingAddress,
+      paymentMethod,
+      taxPrice = 0,
+      shippingPrice = 0,
+      couponCode = null,
+    } = req.body || {};
 
-  // normalize product id & qty
-  const orderItemsNorm = orderItems.map((it) => ({
-    ...it,
-    product: it.product || it._id || it.id,
-    quantity: it.quantity || it.qty || 1,
-  }));
-
-  for (const [i, item] of orderItemsNorm.entries()) {
-    if (!item?.product) {
-      return res.status(400).json({ message: `Missing product id for item #${i + 1}` });
-    }
-  }
-
-  // compute items price and hydrate name/price
-  // IMPORTANT: server decides 'extra' based on size (do not trust client)
-  let itemsPrice = 0;
-  for (const item of orderItemsNorm) {
-    const prod = await Product.findById(item.product);
-    if (!prod) return res.status(400).json({ message: `Product ${item.product} not found` });
-
-    const qty = Number(item.quantity || 1);
-
-    // server-side surcharge determination
-    const size = item.size || null;
-    const extra = isLargeSizeLabel(size) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
-
-    // hydrate item
-    item.name = prod.name;
-    item.price = prod.price;
-    item.extra = Number(extra); // store surcharge per single unit
-
-    // itemsPrice includes product price + surcharge per unit times qty
-    itemsPrice += (Number(prod.price) + Number(extra)) * qty;
-  }
-
-  // Coupon logic (ROSHARA10 = 10% above 1899)
-  let discountAmount = 0;
-  let coupon = null;
-
-  if (couponCode) {
-    const code = String(couponCode || "").trim().toUpperCase();
-    if (!code) {
-      return res.status(400).json({ message: "Invalid coupon code" });
+    if (!Array.isArray(orderItems) || orderItems.length === 0) {
+      return res.status(400).json({ message: "No order items" });
     }
 
-    coupon = await Coupon.findOne({ code, active: true });
-    if (!coupon) return res.status(400).json({ message: "Invalid or inactive coupon" });
+    // normalize product id & qty
+    const orderItemsNorm = orderItems.map((it) => ({
+      ...it,
+      product: it.product || it._id || it.id,
+      quantity: Number(it.quantity || it.qty || 1),
+    }));
 
-    if (coupon.expiryDate && coupon.expiryDate < new Date()) {
-      return res.status(400).json({ message: "Coupon expired" });
-    }
-
-    // optional usageLimit handling (if you have usageLimit field)
-    if (coupon.usageLimit > 0 && (coupon.usedCount || 0) >= coupon.usageLimit) {
-      return res.status(400).json({ message: "Coupon usage limit reached" });
-    }
-
-    if (itemsPrice < (coupon.minOrderAmount || 0)) {
-      return res.status(400).json({
-        message: `Minimum order amount for coupon is ₹${coupon.minOrderAmount}`,
-      });
-    }
-
-    if (coupon.discountType === "percentage") {
-      discountAmount = Math.round((itemsPrice * coupon.value) / 100);
-    } else {
-      discountAmount = coupon.value;
-    }
-    if (discountAmount > itemsPrice) discountAmount = itemsPrice;
-  }
-
-  // COD fee
-  const codFee = paymentMethod === "cod" ? 90 : 0;
-
-  const totalPrice = itemsPrice - discountAmount + Number(shippingPrice || 0) + Number(taxPrice || 0) + codFee;
-
-  const order = new Order({
-    user: req.user._id,
-    orderItems: orderItemsNorm,
-    shippingAddress,
-    paymentMethod,
-    taxPrice,
-    shippingPrice,
-    itemsPrice,
-    discountAmount,
-    totalPrice,
-    status: "pending",
-    paymentStatus: "pending",
-    upi: {},
-    couponCode: coupon ? coupon.code : null, // store applied coupon code (optional helpful)
-  });
-
-  const created = await order.save();
-
-  // Atomically increment usedCount **only for special coupons**
-  // (we do not fail the order if the coupon increment fails — just log)
-  if (coupon) {
-    try {
-      if (coupon.special) {
-        await Coupon.findByIdAndUpdate(
-          coupon._id,
-          { $inc: { usedCount: 1 } },
-          { new: true }
-        );
-      } else {
-        // If you want to track total uses for all coupons, uncomment below:
-        // await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } });
+    // Validate items quickly
+    for (const [i, item] of orderItemsNorm.entries()) {
+      if (!item?.product) {
+        console.warn("createOrder: missing product id at index", i, item);
+        return res.status(400).json({ message: `Missing product id for item #${i + 1}` });
       }
-    } catch (incErr) {
-      console.error("Failed to increment coupon usedCount:", incErr);
-      // don't abort order — coupon count failure shouldn't block checkout
+      if (!Number.isFinite(item.quantity) || Number(item.quantity) < 1) {
+        console.warn("createOrder: invalid qty at index", i, item);
+        return res.status(400).json({ message: `Invalid quantity for item #${i + 1}` });
+      }
     }
-  }
 
-  res.status(201).json(created);
+    // compute items price and hydrate name/price
+    // IMPORTANT: server decides 'extra' based on size (do not trust client)
+    let itemsPrice = 0;
+    for (const [idx, item] of orderItemsNorm.entries()) {
+      console.log(`Processing item ${idx}: product=${item.product} size=${item.size} qty=${item.quantity}`);
+      const prod = await Product.findById(item.product);
+      if (!prod) {
+        console.error("createOrder: Product not found", item.product);
+        return res.status(400).json({ message: `Product ${item.product} not found` });
+      }
+
+      const qty = Number(item.quantity || 1);
+      const size = item.size || null;
+      const extra = isLargeSizeLabel(size) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
+
+      // hydrate item fields saved to DB
+      item.name = prod.name;
+      item.price = Number(prod.price);
+      item.extra = Number(extra);
+
+      // accumulate itemsPrice (price + surcharge) * qty
+      itemsPrice += (Number(prod.price) + Number(extra)) * qty;
+    }
+
+    // Coupon logic
+    let discountAmount = 0;
+    let coupon = null;
+
+    if (couponCode) {
+      const code = String(couponCode || "").trim().toUpperCase();
+      if (!code) {
+        return res.status(400).json({ message: "Invalid coupon code" });
+      }
+
+      coupon = await Coupon.findOne({ code, active: true });
+      if (!coupon) return res.status(400).json({ message: "Invalid or inactive coupon" });
+
+      if (coupon.expiryDate && coupon.expiryDate < new Date()) {
+        return res.status(400).json({ message: "Coupon expired" });
+      }
+
+      if (coupon.usageLimit > 0 && (coupon.usedCount || 0) >= coupon.usageLimit) {
+        return res.status(400).json({ message: "Coupon usage limit reached" });
+      }
+
+      if (itemsPrice < (coupon.minOrderAmount || 0)) {
+        return res.status(400).json({
+          message: `Minimum order amount for coupon is ₹${coupon.minOrderAmount}`,
+        });
+      }
+
+      if (coupon.discountType === "percentage") {
+        discountAmount = Math.round((itemsPrice * coupon.value) / 100);
+      } else {
+        discountAmount = Number(coupon.value || 0);
+      }
+      if (discountAmount > itemsPrice) discountAmount = itemsPrice;
+    }
+
+    // COD fee
+    const codFee = String(paymentMethod || "").toLowerCase() === "cod" ? 90 : 0;
+
+    const totalPrice =
+      Number(itemsPrice || 0) -
+      Number(discountAmount || 0) +
+      Number(shippingPrice || 0) +
+      Number(taxPrice || 0) +
+      Number(codFee || 0);
+
+    const order = new Order({
+      user: req.user?._id,
+      orderItems: orderItemsNorm,
+      shippingAddress,
+      paymentMethod,
+      taxPrice,
+      shippingPrice,
+      itemsPrice,
+      discountAmount,
+      totalPrice,
+      status: "pending",
+      paymentStatus: "pending",
+      upi: {},
+      couponCode: coupon ? coupon.code : null,
+      codFee: codFee,
+    });
+
+    const created = await order.save();
+
+    // increment coupon usage atomically (only for special === true in your logic)
+    if (coupon) {
+      try {
+        if (coupon.special) {
+          await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } }, { new: true });
+        } else {
+          // intentionally left blank — you can increment usedCount for non-special if desired
+        }
+      } catch (incErr) {
+        console.error("Failed to increment coupon usedCount:", incErr);
+        // do not block the order on this failure
+      }
+    }
+
+    res.status(201).json(created);
+  } catch (err) {
+    console.error("createOrder - unexpected error:", err && err.stack ? err.stack : err);
+    // helpful response while debugging; you can remove detail later
+    res.status(500).json({ message: "Server error while creating order", detail: String(err?.message || err) });
+  }
 });
 
 export const submitUpiProof = asyncHandler(async (req, res) => {
@@ -216,10 +225,7 @@ export const adminListOrders = asyncHandler(async (req, res) => {
   let userIds = [];
   if (q) {
     const users = await User.find({
-      $or: [
-        { email: { $regex: q, $options: "i" } },
-        { name: { $regex: q, $options: "i" } },
-      ],
+      $or: [{ email: { $regex: q, $options: "i" } }, { name: { $regex: q, $options: "i" } }],
     }).select("_id");
     userIds = users.map((u) => u._id);
   }
@@ -232,9 +238,7 @@ export const adminListOrders = asyncHandler(async (req, res) => {
     filter.$or = filter.$or ? [...filter.$or, ...idOr] : idOr;
   }
 
-  const orders = await Order.find(filter)
-    .populate("user", "name email")
-    .sort({ createdAt: -1 });
+  const orders = await Order.find(filter).populate("user", "name email").sort({ createdAt: -1 });
 
   res.json(orders);
 });

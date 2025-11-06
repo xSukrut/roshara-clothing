@@ -7,41 +7,81 @@ export const useCart = () => useContext(CartContext);
 
 const STORAGE_KEY = "cart_items_v2";
 
-function load() {
+// --- Server/client shared surcharge rule (keep in sync with backend)
+const SURCHARGE_FOR_XL_AND_ABOVE = 200;
+function isLargeSizeLabel(size) {
+  if (!size) return false;
+  const s = String(size).toUpperCase().replace(/\s+/g, "");
+  if (s === "XL" || s === "XXL") return true;
+  const m = s.match(/^(\d+)XL$/);
+  if (m && Number(m[1]) >= 2) return true;
+  const m2 = s.match(/^(\d+)X$/);
+  if (m2 && Number(m2[1]) >= 2) return true;
+  return false;
+}
+function computeSurchargeForSize(size) {
+  return isLargeSizeLabel(size) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
+}
+// -----------------------------------------------------------
+
+function loadRaw() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const parsed = JSON.parse(raw || "[]");
-    if (!Array.isArray(parsed)) return [];
-    // Normalize old items: ensure numeric price, qty and extra fields exist
-    return parsed.map((it) => ({
-      product: it.product,
-      name: it.name,
-      price: Number(it.price || 0),
-      image: it.image || "/placeholder.png",
-      size: it.size || null,
-      qty: Number(it.qty || it.quantity || 1),
-      customSize: it.customSize || null,
-      extra: Number(it.extra || 0),
-    }));
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
-function save(items) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+// When loading, migrate items that are missing/incorrect extra
+function migrateLoadedItems(items = []) {
+  return items.map((it) => {
+    try {
+      // If an explicit extra > 0 was stored, keep it.
+      // Otherwise compute from size (so old items get the surcharge applied).
+      const hasExplicitExtra = typeof it.extra === "number" && it.extra > 0;
+      const computed = computeSurchargeForSize(it.size);
+      const extra = hasExplicitExtra ? Number(it.extra || 0) : computed;
+      return {
+        ...it,
+        // Normalize numeric fields strictly
+        price: Number(it.price || 0),
+        qty: Number(it.qty || it.quantity || 1),
+        extra: Number(extra || 0),
+      };
+    } catch {
+      return {
+        ...it,
+        price: Number(it.price || 0),
+        qty: Number(it.qty || it.quantity || 1),
+        extra: Number(it.extra || 0),
+      };
+    }
+  });
 }
 
-// Helper: build a stable key per line item (product + size + custom signature)
-export const lineKey = (product, size, customSize) =>
-  `${product}__${size || "NOSIZE"}__${customSize ? JSON.stringify(customSize) : "NOCUST"}`;
+function save(items) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // ignore
+  }
+}
+
+// Helper: build a stable key per line item (product + size + custom signature + extra)
+export const lineKey = (product, size, customSize, extra = 0) =>
+  `${product}__${size || "NOSIZE"}__${customSize ? JSON.stringify(customSize) : "NOCUST"}__${Number(extra || 0)}`;
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
 
   useEffect(() => {
-    setItems(load());
+    const raw = loadRaw();
+    const migrated = migrateLoadedItems(raw);
+    setItems(migrated);
   }, []);
+
   useEffect(() => {
     save(items);
   }, [items]);
@@ -64,63 +104,76 @@ export function CartProvider({ children }) {
     size = null,
     qty = 1,
     customSize = null,
-    extra = 0, // surcharge per unit
+    extra = null, // allow null to mean "not provided"
   }) => {
     if (!product) return;
+
     const productId = typeof product === "object" ? product._id : product;
 
     setItems((prev) => {
       const next = [...prev];
+
+      // If caller provided a positive extra, use it; otherwise compute from size
+      const parsedExtra =
+        typeof extra === "number" && extra > 0
+          ? Number(extra)
+          : computeSurchargeForSize(size);
+
+      // find an existing item that matches product, size, customSize and extra
       const idx = next.findIndex(
         (it) =>
           it.product === productId &&
           (it.size || null) === (size || null) &&
-          sameCustom(it.customSize, customSize)
+          sameCustom(it.customSize, customSize) &&
+          Number(it.extra || 0) === parsedExtra
       );
 
-      const parsedExtra = Number(extra || 0);
-
       if (idx >= 0) {
-        // increase qty and keep existing extra
-        next[idx] = { ...next[idx], qty: (next[idx].qty || 1) + qty };
+        // merge by increasing qty
+        next[idx] = { ...next[idx], qty: (next[idx].qty || 1) + (Number(qty) || 1) };
       } else {
         next.push({
           product: productId,
           name,
-          price: Number(price),
+          price: Number(price || 0),
           image,
           size: size || null,
           qty: Number(qty) || 1,
           customSize: customSize || null,
-          extra: parsedExtra,
+          extra: Number(parsedExtra || 0),
         });
       }
       return next;
     });
   };
 
-  const setQty = (product, size, qty, customSize = null) => {
+  // Set quantity per product + size (+ optional customSize + optional extra)
+  // keep signature backward-compatible: setQty(product, size, qty) or setQty(product, size, qty, customSize, extra)
+  const setQty = (product, size, qty, customSize = null, extra = null) => {
     const productId = typeof product === "object" ? product._id : product;
     setItems((prev) =>
       prev.map((it) =>
         it.product === productId &&
         (it.size || null) === (size || null) &&
-        (customSize ? sameCustom(it.customSize, customSize) : true)
+        (customSize ? sameCustom(it.customSize, customSize) : true) &&
+        (extra !== null ? Number(it.extra || 0) === Number(extra || 0) : true)
           ? { ...it, qty: Math.max(1, Number(qty) || 1) }
           : it
       )
     );
   };
 
-  const removeItem = (product, size = null, customSize = null) => {
+  const removeItem = (product, size = null, customSize = null, extra = null) => {
     const productId = typeof product === "object" ? product._id : product;
+
     setItems((prev) =>
       prev.filter(
         (it) =>
           !(
             it.product === productId &&
             (it.size || null) === (size || null) &&
-            (customSize ? sameCustom(it.customSize, customSize) : true)
+            (customSize ? sameCustom(it.customSize, customSize) : true) &&
+            (extra !== null ? Number(it.extra || 0) === Number(extra || 0) : true)
           )
       )
     );
@@ -139,9 +192,11 @@ export function CartProvider({ children }) {
     [items]
   );
 
+  // You can keep your shipping rules; simple placeholders here:
   const shippingPrice = 0;
   const totalPrice = itemsPrice + shippingPrice;
 
+  // optional: to open a mini cart if you have one
   const openMiniCart = () => document.dispatchEvent(new Event("openMiniCart"));
 
   return (

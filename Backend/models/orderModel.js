@@ -4,9 +4,9 @@ import mongoose from "mongoose";
 const orderItemSchema = new mongoose.Schema({
   product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
   name: { type: String, required: true },
-  quantity: { type: Number, required: true, default: 1 },
+  quantity: { type: Number, required: true },
   price: { type: Number, required: true }, // price per unit at time of order
-  extra: { type: Number, default: 0 }, // surcharge per unit (e.g. XL surcharge)
+  extra: { type: Number, default: 0 }, // surcharge per unit (e.g. XL fee)
 });
 
 const upiSchema = new mongoose.Schema(
@@ -29,7 +29,7 @@ const orderSchema = new mongoose.Schema(
       postalCode: String,
       country: String,
     },
-    codFee: { type: Number, default: 0 },
+    codFee: { type: Number, default: 0},
     paymentMethod: { type: String, required: true }, // "upi", "cod", etc.
     paymentResult: {
       id: String,
@@ -43,6 +43,7 @@ const orderSchema = new mongoose.Schema(
     discountAmount: { type: Number, default: 0 },
     totalPrice: { type: Number, default: 0 },
 
+    // NEW: keep main status + payment status in sync
     status: {
       type: String,
       enum: ["pending", "pending_verification", "paid", "shipped", "cancelled", "rejected"],
@@ -54,8 +55,8 @@ const orderSchema = new mongoose.Schema(
       default: "pending",
     },
 
-    upi: upiSchema,
-    adminNote: String,
+    upi: upiSchema,      
+    adminNote: String,   
 
     paidAt: Date,
     shippedAt: Date,
@@ -63,6 +64,6 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Avoid OverwriteModelError in dev / hot-reload environments
+// Prevent OverwriteModelError when using hot-reload / nodemon
 const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
 export default Order;

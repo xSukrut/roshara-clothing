@@ -109,8 +109,9 @@ export default function CartPage() {
               // build image URL consistently
               const img = urlFor(it.image);
 
-              // Add customSize JSON into the key so React can distinguish different custom entries
+              // Key includes product + size + customSize + extra so React keeps lines unique
               const customKey = it.customSize ? JSON.stringify(it.customSize) : "";
+              const key = `${it.product}-${it.size || "NOSIZE"}-${customKey}-${Number(it.extra || 0)}`;
 
               const unitPrice = Number(it.price || 0);
               const extra = Number(it.extra || 0);
@@ -119,12 +120,12 @@ export default function CartPage() {
 
               return (
                 <div
-                  key={`${it.product}-${it.size || "NOSIZE"}-${customKey}`}
+                  key={key}
                   className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-amber-100 bg-white rounded-2xl p-3 sm:p-4 shadow-sm transition-all duration-300 hover:shadow-lg"
                 >
                   {/* Remove */}
                   <button
-                    onClick={() => removeItem(it.product, it.size, it.customSize || null)}
+                    onClick={() => removeItem(it.product, it.size, it.customSize || null, it.extra || 0)}
                     className="absolute top-2 right-3 text-gray-400 hover:text-red-600 text-lg transition-colors"
                     aria-label="Remove from cart"
                   >
@@ -174,7 +175,7 @@ export default function CartPage() {
                         <div className="flex items-center bg-white border border-gray-300 rounded-full shadow-sm overflow-hidden">
                           <button
                             onClick={() =>
-                              setQty(it.product, it.size, Math.max((it.qty || 1) - 1, 1), it.customSize || null)
+                              setQty(it.product, it.size, Math.max((it.qty || 1) - 1, 1), it.customSize || null, it.extra || 0)
                             }
                             className="w-8 h-8 grid place-items-center hover:bg-gray-100"
                             aria-label="Decrease quantity"
@@ -185,7 +186,7 @@ export default function CartPage() {
                             {it.qty}
                           </span>
                           <button
-                            onClick={() => setQty(it.product, it.size, (it.qty || 1) + 1, it.customSize || null)}
+                            onClick={() => setQty(it.product, it.size, (it.qty || 1) + 1, it.customSize || null, it.extra || 0)}
                             className="w-8 h-8 grid place-items-center hover:bg-gray-100"
                             aria-label="Increase quantity"
                           >
@@ -246,7 +247,6 @@ export default function CartPage() {
         </Link>
       </aside>
 
-      {/* Recommendations */}
       <div className="md:col-span-3 max-w-6xl mx-auto mt-12 p-6 bg-gradient-to-b from-white to-[#FFFDF9] rounded-2xl shadow-sm">
         <h2 className="text-2xl md:text-3xl font-extrabold mb-6 text-[#44120F] text-center">
           You might also like
@@ -301,7 +301,7 @@ function RecommendationCard({ product, onAdd }) {
           className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
         />
       </div>
-
+      
       <div className="p-5 flex flex-col items-center text-center">
         <h3 className="text-lg font-semibold text-gray-900 leading-snug line-clamp-1">
           {product.name}

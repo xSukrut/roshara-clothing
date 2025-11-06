@@ -4,13 +4,13 @@ import cors from "cors";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import path from "path";
-
 import authRoutes from "./routes/authRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import collectionRoutes from "./routes/collectionRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import { notFound, errorHandler } from "../middleware/errorMiddleware.js";
 
 dotenv.config();
 
@@ -26,9 +26,10 @@ const FRONTEND_URL = (process.env.FRONTEND_URL || "http://localhost:3000").repla
 const allowedOrigins = [
   "https://roshara.in",
   "https://www.roshara.in",
-  FRONTEND_URL,        // e.g. https://roshara-clothing.vercel.app
-  /\.vercel\.app$/,    // Vercel previews
-  /\.onrender\.com$/,  // Render subdomains
+  FRONTEND_URL,
+  /\.vercel\.app$/,
+  /\.onrender\.com$/,
+  "http://localhost:3000",
 ];
 
 function devAllowOrigin(origin) {
@@ -40,15 +41,11 @@ function devAllowOrigin(origin) {
 
 const corsOptions = {
   origin(origin, cb) {
-    // allow non-browser requests (origin === undefined)
     if (!origin) return cb(null, true);
-
     const ok = allowedOrigins.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin));
-
     if (ok || (process.env.NODE_ENV !== "production" && devAllowOrigin(origin))) {
       return cb(null, true);
     }
-
     console.warn("🚫 Blocked by CORS:", origin);
     return cb(new Error("Not allowed by CORS"));
   },
@@ -56,7 +53,6 @@ const corsOptions = {
   optionsSuccessStatus: 200,
 };
 
-// Apply CORS middleware for normal requests
 app.use(cors(corsOptions));
 
 app.use((req, res, next) => {
@@ -121,5 +117,10 @@ app.get("/health", (req, res) => res.status(200).json({ ok: true }));
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
+
+// 404 handler
+app.use(notFound);
+// centralized error handler -> sends JSON
+app.use(errorHandler);
 
 export default app;

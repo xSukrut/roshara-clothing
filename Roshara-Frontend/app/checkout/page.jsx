@@ -157,7 +157,10 @@ export default function CheckoutPage() {
         ) : (
           <div className="space-y-4">
             {items.map((it) => (
-              <div key={keyFor(it)} className="border rounded p-4 flex gap-4">
+              <div
+  key={`${it.product}-${it.size || "NOSIZE"}-${it.qty || 1}-${it.extra || 0}-${JSON.stringify(it.customSize || {})}`}
+  className="border rounded p-4 flex gap-4"
+>
                 <img src={it.image || "/placeholder.png"} alt={it.name} className="w-20 h-20 object-cover rounded" />
                 <div className="flex-1">
                   <div className="font-medium">{it.name}</div>
@@ -261,7 +264,6 @@ export default function CheckoutPage() {
             <span>-₹{estimated.discount}</span>
           </div>
         )}
-
         {estimated.codFee > 0 && (<div className="flex justify-between text-sm mt-1"><span>COD Fee</span><span>₹{estimated.codFee}</span></div>)}
 
         <hr className="my-3" />
@@ -271,3 +273,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+

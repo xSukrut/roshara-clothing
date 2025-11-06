@@ -1,3 +1,4 @@
+// controllers/authController.js
 import jwt from "jsonwebtoken";
 import User from "../models/userModel.js";
 import asyncHandler from "express-async-handler";
@@ -8,24 +9,24 @@ const generateToken = (id) =>
     expiresIn: "30d",
   });
 
-/**
- * @desc   Register new user
- * @route  POST /api/auth/register
- * @access Public
- */
 export const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password } = req.body || {};
 
-  const userExists = await User.findOne({ email });
+  if (!name || !email || !password) {
+    res.status(400);
+    throw new Error("Name, email and password are required");
+  }
+
+  const userExists = await User.findOne({ email: String(email).toLowerCase().trim() });
   if (userExists) {
     res.status(400);
     throw new Error("User already exists");
   }
 
   const user = await User.create({
-    name,
-    email,
-    password, // hashed automatically by pre-save hook
+    name: String(name).trim(),
+    email: String(email).toLowerCase().trim(),
+    password, // hashed by pre-save
   });
 
   if (user) {
@@ -45,16 +46,14 @@ export const registerUser = asyncHandler(async (req, res) => {
   }
 });
 
-/**
- * @desc   Auth user & get token
- * @route  POST /api/auth/login
- * @access Public
- */
 export const authUser = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
+  if (!email || !password) {
+    res.status(400);
+    throw new Error("Email and password required");
+  }
 
-  const user = await User.findOne({ email });
-
+  const user = await User.findOne({ email: String(email).toLowerCase().trim() });
   if (user && (await user.matchPassword(password))) {
     res.json({
       token: generateToken(user._id),
@@ -72,11 +71,6 @@ export const authUser = asyncHandler(async (req, res) => {
   }
 });
 
-/**
- * @desc   Get user profile
- * @route  GET /api/auth/profile
- * @access Private
- */
 export const getProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   if (user) {
