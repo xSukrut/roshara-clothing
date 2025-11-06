@@ -27,48 +27,6 @@ export default function NewArrivals() {
   }, [all]);
 
   return (
-    // <section className=" max-w-7xl w-full items-center justify-center p-4">
-    //   <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
-    //     {/* Left Section - Heading */}
-    //     <h2 className="text-[#4A1718] text-4xl font-bold mb-4 md:mb-0">
-    //       New Arrivals <br /> That Speak Style
-    //     </h2>
-
-    //     {/* Right Section - Subheading + Button */}
-    //     <div className="flex flex-col items-start md:items-end text-end max-w-sm">
-    //       <p className="text-sm font-normal text-gray-700 mb-0.5 leading-relaxed">
-    //         From effortless everyday wear to festive statements, find the styles
-    //         that make you feel beautifully you.
-    //       </p>
-
-    //       <Link
-    //         href="/new-arrivals"
-    //         className="bg-black text-white px-5 py-2 rounded hover:bg-gray-800 transition"
-    //       >
-    //         View All
-    //       </Link>
-    //     </div>
-    //   </div>
-
-    //   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-    //     {latestFive.map((p) => (
-    //       <ProductCard
-    //         key={p._id}
-    //         product={p}
-    //         onSearch={setSelectedProduct}
-    //         className="w-64 h-80"
-    //       />
-    //     ))}
-    //   </div>
-
-    //   {selectedProduct && (
-    //     <ProductDetails
-    //       product={selectedProduct}
-    //       onClose={() => setSelectedProduct(null)}
-    //     />
-    //   )}
-    // </section>
-
     <section className="w-full flex justify-center">
       <div className="max-w-7xl w-full p-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">

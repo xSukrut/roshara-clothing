@@ -1,3 +1,4 @@
+// app/shop/page.jsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -15,6 +16,9 @@ export default function ShopAllPage() {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
+  // New: responsive card size state -> "lg" (desktop) | "md" (mobile)
+  const [cardSize, setCardSize] = useState("lg");
+
   useEffect(() => {
     let ignore = false;
     (async () => {
@@ -28,6 +32,32 @@ export default function ShopAllPage() {
     })();
     return () => {
       ignore = true;
+    };
+  }, []);
+
+  // Decide card size based on window width (client-only)
+  useEffect(() => {
+    const calc = () => {
+      if (typeof window === "undefined") return;
+      // Use 640px (tailwind "sm") as threshold — change if you prefer smaller/larger breakpoint.
+      const w = window.innerWidth;
+      setCardSize(w <= 640 ? "md" : "lg");
+    };
+
+    // initial run
+    calc();
+
+    // light debounce for resize
+    let t;
+    const onResize = () => {
+      clearTimeout(t);
+      t = setTimeout(calc, 120);
+    };
+
+    window.addEventListener("resize", onResize);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", onResize);
     };
   }, []);
 
@@ -76,11 +106,9 @@ export default function ShopAllPage() {
         <p className="text-gray-500 mt-2 text-sm md:text-base">
           {loading
             ? "Loading products…"
-            : `${filtered.length} item${
-                filtered.length === 1 ? "" : "s"
-              } available`}
+            : `${filtered.length} item${filtered.length === 1 ? "" : "s"} available`}
         </p>
-        <div className="mt-1 h-2px w-20 mx-auto bg-linear-to-r from-amber-600 to-yellow-400 rounded-full" />
+        <div className="mt-1 h-1 w-20 mx-auto bg-gradient-to-r from-amber-600 to-yellow-400 rounded-full" />
       </div>
 
       {/* Controls Section */}
@@ -101,11 +129,7 @@ export default function ShopAllPage() {
             strokeWidth={1.5}
             stroke="currentColor"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
           </svg>
         </div>
 
@@ -135,9 +159,7 @@ export default function ShopAllPage() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="appearance-none border border-gray-200 bg-linear-to-r from-gray-50 to-white rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-600 
-               shadow-sm hover:shadow-md transition-all duration-200 ease-in-out 
-               focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-gray-400"
+              className="appearance-none border border-gray-200 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-600 shadow-sm hover:shadow-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-gray-400"
             >
               <option value="new">✨ Newest</option>
               <option value="price-asc">💸 Price: Low → High</option>
@@ -150,7 +172,7 @@ export default function ShopAllPage() {
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
             </svg>
           </div>
         </div>
@@ -158,13 +180,11 @@ export default function ShopAllPage() {
 
       {/* Product Grid */}
       {loading ? (
-        <GridSkeleton />
+        <GridSkeleton size={cardSize} />
       ) : shown.length === 0 ? (
         <div className="text-center text-gray-600 py-16">
           <p className="text-lg font-medium">No products match your filters.</p>
-          <p className="text-sm text-gray-400 mt-1">
-            Try clearing filters or adjusting your search.
-          </p>
+          <p className="text-sm text-gray-400 mt-1">Try clearing filters or adjusting your search.</p>
         </div>
       ) : (
         <>
@@ -174,7 +194,7 @@ export default function ShopAllPage() {
                 key={p._id}
                 product={p}
                 onSearch={setSelectedProduct}
-                size="lg"
+                size={cardSize} // Pass responsive size down
               />
             ))}
           </div>
@@ -193,22 +213,21 @@ export default function ShopAllPage() {
       )}
 
       {selectedProduct && (
-        <ProductDetails
-          product={selectedProduct}
-          onClose={() => setSelectedProduct(null)}
-        />
+        <ProductDetails product={selectedProduct} onClose={() => setSelectedProduct(null)} />
       )}
     </main>
   );
 }
 
-function GridSkeleton() {
+function GridSkeleton({ size = "lg" }) {
+  // match ProductCard heights:
+  const h = size === "lg" ? "h-[420px] md:h-[460px]" : "h-[300px]"; // reduced mobile height
   const cells = Array.from({ length: 8 });
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
       {cells.map((_, i) => (
         <div key={i} className="animate-pulse">
-          <div className="w-full h-[420px] md:h-[460px] bg-gray-200 rounded-2xl" />
+          <div className={`${h} w-full bg-gray-200 rounded-2xl`} />
           <div className="mt-3 h-4 w-2/3 bg-gray-200 rounded" />
           <div className="mt-2 h-4 w-1/3 bg-gray-200 rounded" />
         </div>
