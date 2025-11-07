@@ -2,15 +2,28 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
-  const search = useSearchParams();
-  const next = search?.get("next") || "/";
+
+  // We'll determine `next` on the client (avoid useSearchParams to prevent prerender issues)
+  const [nextPath, setNextPath] = useState("/");
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const nx = params.get("next");
+        if (nx) setNextPath(nx);
+      }
+    } catch (e) {
+      // ignore parsing errors
+    }
+  }, []);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,10 +36,9 @@ export default function LoginPage() {
     setBusy(true);
     try {
       await login(email.trim(), password);
-      router.push(next);
+      router.push(nextPath || "/");
     } catch (err) {
       console.error(err);
-      // network / axios error shape compatibility
       setError(err?.response?.data?.message || err.message || "Login failed");
     } finally {
       setBusy(false);
@@ -38,8 +50,19 @@ export default function LoginPage() {
       <h2 className="text-2xl font-semibold mb-4">Login</h2>
       {error && <div className="text-red-600 mb-3">{error}</div>}
       <form onSubmit={onSubmit} className="space-y-3">
-        <input className="w-full border rounded px-3 py-2" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input className="w-full border rounded px-3 py-2" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <input
+          className="w-full border rounded px-3 py-2"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          className="w-full border rounded px-3 py-2"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
         <button disabled={busy} className="w-full bg-black text-white py-2 rounded">
           {busy ? "Logging in..." : "Login"}
         </button>
