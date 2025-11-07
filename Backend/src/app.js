@@ -21,6 +21,7 @@ if (!process.env.JWT_SECRET) {
 
 const app = express();
 
+// FRONTEND_URL environment variable should be the origin (e.g. https://www.roshara.in)
 const FRONTEND_URL = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/$/, "");
 
 const allowedOrigins = [
@@ -49,23 +50,30 @@ const corsOptions = {
     );
 
     if (ok || (process.env.NODE_ENV !== "production" && devAllowOrigin(origin))) {
-      return cb(null, true); // allow
+      // When allowed, return true so cors sets Access-Control-Allow-Origin to the request origin
+      return cb(null, true);
     }
 
-    // Deny: do NOT throw an error here — return false so cors middleware responds cleanly.
+    // Deny gracefully — return false so cors middleware responds without CORS headers for that origin
     console.warn("🚫 Blocked by CORS (origin):", origin);
     return cb(null, false);
   },
   credentials: true, // set true if browser will send cookies; otherwise set false
-  methods: ["GET","HEAD","PUT","PATCH","POST","DELETE","OPTIONS"],
-  allowedHeaders: ["Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization"],
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "Authorization",
+  ],
   optionsSuccessStatus: 204,
 };
 
-// explicitly handle preflight with cors middleware
-app.options("/*", cors(corsOptions));
+// Explicitly handle preflight requests using a RegExp path to avoid path-to-regexp parsing errors
+app.options(/.*/, cors(corsOptions));
 
-// apply CORS for all routes
+// Apply CORS for all routes
 app.use(cors(corsOptions));
 
 // ----------------
@@ -76,10 +84,9 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // static uploads
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-// OPTIONAL: helpful logging middleware to show origin of incoming requests (remove in prod if noisy)
+// OPTIONAL: helpful logging middleware to show origin of incoming requests (remove/quiet in prod if noisy)
 app.use((req, res, next) => {
   const origin = req.get("Origin") || "-";
-  // Only log suspicious origins or in non-prod
   if (process.env.NODE_ENV !== "production" && origin !== "-") {
     console.log(`[CORS] ${req.method} ${req.path} — Origin: ${origin}`);
   }
