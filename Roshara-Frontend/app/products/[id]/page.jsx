@@ -1,4 +1,3 @@
-// app/products/[id]/page.jsx
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -44,6 +43,9 @@ export default function ProductDetailsPage() {
   const [hips, setHips] = useState("");
   const [shoulder, setShoulder] = useState("");
 
+  // NEW: lining selection
+  const [lining, setLining] = useState("without"); // "without" | "with"
+
   useEffect(() => {
     let mounted = true;
     setLoading(true);
@@ -51,9 +53,10 @@ export default function ProductDetailsPage() {
       .then((data) => {
         if (!mounted) return;
         setProduct(data);
-        // default size: first available from product.sizes → else first from chart
         const available = resolvedSizes(data);
         if (available.length) setSize(available[0]);
+        // reset lining default
+        setLining("without");
       })
       .catch((e) => setErr(e?.response?.data?.message || "Failed to load product"))
       .finally(() => mounted && setLoading(false));
@@ -61,6 +64,7 @@ export default function ProductDetailsPage() {
   }, [id]);
 
   const gallery = useMemo(() => {
+    if (!product) return ["/placeholder.png"];
     const imgs = (product?.images && product.images.length ? product.images : [product?.image]).filter(Boolean);
     return imgs?.length ? imgs : ["/placeholder.png"];
   }, [product]);
@@ -76,13 +80,11 @@ export default function ProductDetailsPage() {
   const { name, brand, price, mrp, discountPercent, description, specs } = product || {};
 
   function handleAdd() {
-    // if sizes are available and user not using custom, require a size
     if (!useCustom && sizesAvailable.length && !size) {
       alert("Please select a size.");
       return;
     }
 
-    // if using custom, ensure at least one measurement provided (simple validation)
     let customSizeObj = null;
     if (useCustom) {
       const hasAny = [bust, waist, hips, shoulder].some((v) => (v ?? "").toString().trim() !== "");
@@ -98,15 +100,22 @@ export default function ProductDetailsPage() {
       };
     }
 
-    // add to cart, attach customSize when used
+    // Determine unit price client-side for consistent UI: if product offers lining and user selected 'with' use liningPrice
+    let unitPrice = Number(product.price || 0);
+    if (product.hasLiningOption && String(lining || "").toLowerCase() === "with") {
+      const lp = Number(product.liningPrice);
+      if (Number.isFinite(lp) && lp > 0) unitPrice = lp;
+    }
+
     addItem({
       product: product._id,
       name: product.name,
-      price: product.price,
+      price: unitPrice,
       qty: 1,
       size: useCustom ? "Custom" : size || null,
       customSize: customSizeObj,
       image: gallery[0],
+      lining: product.hasLiningOption ? (String(lining || "").toLowerCase() === "with" ? "with" : "without") : null,
     });
     openMiniCart?.();
   }
@@ -158,6 +167,32 @@ export default function ProductDetailsPage() {
         </div>
         <div className="text-xs text-gray-600 mt-1">inclusive of all taxes</div>
 
+        {/* LINING selector — show only if product supports it */}
+        {product.hasLiningOption && (
+          <div className="mt-4">
+            <div className="text-sm font-semibold mb-2">Lining</div>
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={() => setLining("without")}
+                className={`px-3 py-1 rounded border ${lining === "without" ? "bg-black text-white" : "bg-white"}`}
+                type="button"
+              >
+                Without lining (₹{Number(product.price).toLocaleString("en-IN")})
+              </button>
+              <button
+                onClick={() => setLining("with")}
+                className={`px-3 py-1 rounded border ${lining === "with" ? "bg-black text-white" : "bg-white"}`}
+                type="button"
+              >
+                With lining (₹{Number(product.liningPrice).toLocaleString("en-IN")})
+              </button>
+              <div className="ml-4 text-sm text-gray-700">
+                Unit: <span className="font-semibold">₹{(product.hasLiningOption && lining === "with") ? Number(product.liningPrice) : Number(product.price)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Sizes */}
         {sizesAvailable.length > 0 && (
           <div className="mt-6">
@@ -175,7 +210,6 @@ export default function ProductDetailsPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    // toggle custom mode; when toggling on, clear selected regular size
                     setUseCustom((prev) => {
                       const next = !prev;
                       if (next) setSize(null);
@@ -208,7 +242,6 @@ export default function ProductDetailsPage() {
               })}
             </div>
 
-            {/* Selected measurements for regular sizes */}
             {!useCustom && selectedMeasures && (
               <div className="mt-4 text-sm">
                 <div className="font-medium">Selected size: {size}</div>
@@ -342,27 +375,28 @@ function SizeGuideModal({ onClose }) {
         </div>
 
         <div className="max-h-[75vh] overflow-auto p-5 space-y-5">
-          {/* Guide image */}
           <img src="/size-guide.jpg" alt="Roshara Size Guide" className="w-full h-auto rounded" />
-
-          {/* Table (text searchable & accessible) */}
           <div className="mt-4">
             <div className="text-sm font-medium mb-2">Measurements (in inches)</div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm border">
                 <thead className="bg-gray-50">
                   <tr>
-                    <Th>Size</Th><Th>Bust</Th><Th>Waist</Th><Th>Hips</Th><Th>Shoulder</Th>
+                    <th className="text-left font-semibold px-3 py-2 border-r">Size</th>
+                    <th className="text-left font-semibold px-3 py-2 border-r">Bust</th>
+                    <th className="text-left font-semibold px-3 py-2 border-r">Waist</th>
+                    <th className="text-left font-semibold px-3 py-2 border-r">Hips</th>
+                    <th className="text-left font-semibold px-3 py-2">Shoulder</th>
                   </tr>
                 </thead>
                 <tbody>
                   {Object.entries(SIZE_CHART).map(([s, m]) => (
                     <tr key={s} className="border-t">
-                      <Td>{s}</Td>
-                      <Td>{m.bust}"</Td>
-                      <Td>{m.waist}"</Td>
-                      <Td>{m.hips}"</Td>
-                      <Td>{m.shoulder}"</Td>
+                      <td className="px-3 py-2 border-r">{s}</td>
+                      <td className="px-3 py-2 border-r">{m.bust}"</td>
+                      <td className="px-3 py-2 border-r">{m.waist}"</td>
+                      <td className="px-3 py-2 border-r">{m.hips}"</td>
+                      <td className="px-3 py-2">{m.shoulder}"</td>
                     </tr>
                   ))}
                 </tbody>
@@ -378,11 +412,4 @@ function SizeGuideModal({ onClose }) {
       </div>
     </div>
   );
-}
-
-function Th({ children }) {
-  return <th className="text-left font-semibold px-3 py-2 border-r last:border-r-0">{children}</th>;
-}
-function Td({ children }) {
-  return <td className="px-3 py-2 border-r last:border-r-0">{children}</td>;
 }

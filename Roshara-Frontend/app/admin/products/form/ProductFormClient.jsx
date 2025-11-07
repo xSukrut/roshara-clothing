@@ -16,6 +16,9 @@ export default function ProductFormClient({ editId }) {
     images: [],
     collection: "", // store collection _id
     discount: "",
+    // lining fields
+    hasLiningOption: false,
+    liningPrice: "",
   });
   const [collections, setCollections] = useState([]);
   const [message, setMessage] = useState("");
@@ -45,9 +48,11 @@ export default function ProductFormClient({ editId }) {
           description: p.description || "",
           price: p.price ?? "",
           stock: p.stock ?? "",
-          images: Array.isArray(p.images) ? p.images : (p.image ? [p.image] : []),
+          images: Array.isArray(p.images) ? p.images : p.image ? [p.image] : [],
           collection: p.collection?._id || p.collection || "",
           discount: p.discount ?? p.discountPercent ?? "",
+          hasLiningOption: Boolean(p.hasLiningOption),
+          liningPrice: p.liningPrice ?? "",
         });
       } catch (e) {
         if (alive) setMessage(e?.response?.data?.message || "Failed to load product");
@@ -104,6 +109,24 @@ export default function ProductFormClient({ editId }) {
         if (payload[k] !== "" && payload[k] !== null) payload[k] = Number(payload[k]);
       });
 
+      // lining price handling
+      if (payload.hasLiningOption) {
+        // ensure liningPrice is present and positive
+        if (payload.liningPrice === "" || payload.liningPrice === null) {
+          setMessage("Please enter a lining price (positive number) or disable lining option.");
+          return;
+        }
+        payload.liningPrice = Number(payload.liningPrice);
+        if (!Number.isFinite(payload.liningPrice) || payload.liningPrice <= 0) {
+          setMessage("Lining price must be a positive number.");
+          return;
+        }
+      } else {
+        // if lining is disabled, send null to clear on backend
+        payload.liningPrice = null;
+      }
+
+      // images already array
       if (payload.collection === "") delete payload.collection;
 
       if (editId) {
@@ -116,15 +139,13 @@ export default function ProductFormClient({ editId }) {
 
       setTimeout(() => router.push("/admin/products"), 800);
     } catch (err) {
-      setMessage(err?.response?.data?.message || "Error");
+      setMessage(err?.response?.data?.message || err?.message || "Error");
     }
   };
 
   return (
     <div className="p-8 max-w-xl mx-auto">
-      <h1 className="text-xl font-semibold mb-4">
-        {editId ? "Edit" : "Add"} Product
-      </h1>
+      <h1 className="text-xl font-semibold mb-4">{editId ? "Edit" : "Add"} Product</h1>
 
       {message && (
         <p className={`mb-4 ${/success/i.test(message) ? "text-green-600" : "text-red-600"}`}>
@@ -154,20 +175,14 @@ export default function ProductFormClient({ editId }) {
             className="w-full p-2 border rounded mb-3"
           />
 
-          {uploading && (
-            <div className="text-sm text-gray-500 mb-2">Uploading…</div>
-          )}
+          {uploading && <div className="text-sm text-gray-500 mb-2">Uploading…</div>}
 
           {form.images?.length > 0 && (
             <div className="flex gap-2 mt-2 flex-wrap">
               {form.images.map((img, idx) => (
                 <div key={idx} className="relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={resolveImg(img)}
-                    alt="preview"
-                    className="w-20 h-20 object-cover border rounded"
-                  />
+                  <img src={resolveImg(img)} alt="preview" className="w-20 h-20 object-cover border rounded" />
                   <button
                     type="button"
                     onClick={() => removeImageAt(idx)}
@@ -234,6 +249,44 @@ export default function ProductFormClient({ editId }) {
           onChange={(e) => setForm({ ...form, discount: e.target.value })}
           className="w-full p-2 border rounded"
         />
+
+        {/* Lining option */}
+        <div className="flex flex-col gap-2">
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={Boolean(form.hasLiningOption)}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setForm((prev) => ({
+                  ...prev,
+                  hasLiningOption: checked,
+                  // if turning off, clear liningPrice in UI
+                  liningPrice: checked ? prev.liningPrice : "",
+                }));
+              }}
+            />
+            <span>Enable with/without lining option for this product</span>
+          </label>
+
+          {form.hasLiningOption && (
+            <div>
+              <input
+                type="number"
+                step="1"
+                placeholder="Lining price (e.g. 1299)"
+                value={form.liningPrice}
+                onChange={(e) => setForm({ ...form, liningPrice: e.target.value })}
+                className="w-full p-2 border rounded"
+                required={form.hasLiningOption}
+                min={1}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                When enabled, customers can choose "with lining" and pay the lining price. Server will also validate this.
+              </p>
+            </div>
+          )}
+        </div>
 
         <button
           type="submit"

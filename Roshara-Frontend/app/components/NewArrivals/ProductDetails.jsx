@@ -1,4 +1,3 @@
-// app/components/NewArrivals/ProductDetails.jsx
 "use client";
 import { ROSHARA_SIZES } from "../../constants/sizes";
 import { useMemo, useState } from "react";
@@ -62,6 +61,9 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
 
   const measures = selected ? SIZE_CHART[selected] : null;
 
+  // NEW: lining
+  const [lining, setLining] = useState("without");
+
   const addToCart = () => {
     setErr("");
     if (!selected) {
@@ -71,14 +73,22 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
 
     const extra = isLargeSize(selected) ? EXTRA_FOR_LARGE : 0;
 
+    // compute unit price based on lining if product supports it
+    let unitPrice = Number(product.price);
+    if (product.hasLiningOption && String(lining).toLowerCase() === "with") {
+      const lp = Number(product.liningPrice);
+      if (Number.isFinite(lp) && lp > 0) unitPrice = lp;
+    }
+
     const item = {
       product: product._id,
       name: product.name,
-      price: Number(product.price),
+      price: Number(unitPrice),
       image: gallery[0],
       size: selected,
       qty,
       extra,
+      lining: product.hasLiningOption ? (String(lining || "").toLowerCase() === "with" ? "with" : "without") : null,
     };
 
     if (typeof onAddToCart === "function") {
@@ -126,6 +136,28 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
               <div className="mt-4 text-3xl font-semibold">
                 ₹{Number(product.price).toLocaleString("en-IN")}
               </div>
+
+              {/* Lining selector */}
+              {product.hasLiningOption && (
+                <div className="mt-4">
+                  <div className="text-sm font-semibold mb-2">Lining</div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setLining("without")}
+                      className={`px-3 py-1 rounded border ${lining === "without" ? "bg-black text-white" : "bg-white"}`}
+                    >
+                      Without lining (₹{Number(product.price)})
+                    </button>
+                    <button
+                      onClick={() => setLining("with")}
+                      className={`px-3 py-1 rounded border ${lining === "with" ? "bg-black text-white" : "bg-white"}`}
+                    >
+                      With lining (₹{Number(product.liningPrice)})
+                    </button>
+                  </div>
+                  <div className="mt-2 text-sm">Preview: <strong>₹{(product.hasLiningOption && lining === "with") ? product.liningPrice : product.price}</strong></div>
+                </div>
+              )}
 
               <div className="mt-6">
                 <div className="flex items-center justify-between">

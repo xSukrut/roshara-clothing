@@ -11,10 +11,8 @@ function isLargeSizeLabel(size) {
   if (!size) return false;
   const s = String(size).toUpperCase().replace(/\s+/g, "");
   if (s === "XL" || s === "XXL") return true;
-  // match "2XL", "3XL", "4XL"...
   const m = s.match(/^(\d+)XL$/);
   if (m && Number(m[1]) >= 2) return true;
-  // match "2X", "3X"
   const m2 = s.match(/^(\d+)X$/);
   if (m2 && Number(m2[1]) >= 2) return true;
   return false;
@@ -24,8 +22,9 @@ export const createOrder = asyncHandler(async (req, res) => {
   try {
     console.log(">>> createOrder called -", new Date().toISOString());
     console.log("User present:", !!req.user, req.user && { id: req.user._id, email: req.user.email });
-    // log payload trimmed to avoid huge logs
-    try { console.log("Payload (trim):", JSON.stringify(req.body).slice(0, 2000)); } catch (e) {}
+    try {
+      console.log("Payload (trim):", JSON.stringify(req.body).slice(0, 2000));
+    } catch (e) {}
 
     const {
       orderItems,
@@ -60,10 +59,10 @@ export const createOrder = asyncHandler(async (req, res) => {
     }
 
     // compute items price and hydrate name/price
-    // IMPORTANT: server decides 'extra' based on size (do not trust client)
+    // IMPORTANT: server decides 'extra' and price based on product and requested lining (do not trust client)
     let itemsPrice = 0;
     for (const [idx, item] of orderItemsNorm.entries()) {
-      console.log(`Processing item ${idx}: product=${item.product} size=${item.size} qty=${item.quantity}`);
+      console.log(`Processing item ${idx}: product=${item.product} size=${item.size} qty=${item.quantity} lining=${item.lining}`);
       const prod = await Product.findById(item.product);
       if (!prod) {
         console.error("createOrder: Product not found", item.product);
@@ -74,13 +73,25 @@ export const createOrder = asyncHandler(async (req, res) => {
       const size = item.size || null;
       const extra = isLargeSizeLabel(size) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
 
+      // Determine unit price server-side:
+      // If product supports lining and customer requested lining === 'with' use product.liningPrice.
+      // Otherwise use product.price.
+      let unitPrice = Number(prod.price);
+      if (prod.hasLiningOption && String(item.lining || "").toLowerCase() === "with") {
+        // protect: fallback to prod.price if liningPrice absent or invalid
+        const lp = Number(prod.liningPrice);
+        if (Number.isFinite(lp) && lp > 0) unitPrice = lp;
+      }
+
       // hydrate item fields saved to DB
       item.name = prod.name;
-      item.price = Number(prod.price);
+      item.price = Number(unitPrice); // unit price saved
       item.extra = Number(extra);
+      // keep lining metadata
+      item.lining = prod.hasLiningOption ? (String(item.lining || "").toLowerCase() === "with" ? "with" : "without") : null;
 
       // accumulate itemsPrice (price + surcharge) * qty
-      itemsPrice += (Number(prod.price) + Number(extra)) * qty;
+      itemsPrice += (Number(unitPrice) + Number(extra)) * qty;
     }
 
     // Coupon logic
@@ -122,11 +133,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     const codFee = String(paymentMethod || "").toLowerCase() === "cod" ? 90 : 0;
 
     const totalPrice =
-      Number(itemsPrice || 0) -
-      Number(discountAmount || 0) +
-      Number(shippingPrice || 0) +
-      Number(taxPrice || 0) +
-      Number(codFee || 0);
+      Number(itemsPrice || 0) - Number(discountAmount || 0) + Number(shippingPrice || 0) + Number(taxPrice || 0) + Number(codFee || 0);
 
     const order = new Order({
       user: req.user?._id,
@@ -147,24 +154,20 @@ export const createOrder = asyncHandler(async (req, res) => {
 
     const created = await order.save();
 
-    // increment coupon usage atomically (only for special === true in your logic)
     if (coupon) {
       try {
         if (coupon.special) {
           await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } }, { new: true });
         } else {
-          // intentionally left blank — you can increment usedCount for non-special if desired
         }
       } catch (incErr) {
         console.error("Failed to increment coupon usedCount:", incErr);
-        // do not block the order on this failure
       }
     }
 
     res.status(201).json(created);
   } catch (err) {
     console.error("createOrder - unexpected error:", err && err.stack ? err.stack : err);
-    // helpful response while debugging; you can remove detail later
     res.status(500).json({ message: "Server error while creating order", detail: String(err?.message || err) });
   }
 });

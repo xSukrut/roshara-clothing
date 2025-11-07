@@ -1,4 +1,3 @@
-// app/components/NewArrivals/ProductCard.jsx
 "use client";
 
 import { motion } from "framer-motion";
@@ -20,7 +19,6 @@ function isLargeSize(size) {
   if (!size) return false;
   const s = String(size).toUpperCase().replace(/\s+/g, "");
   if (s === "XL" || s === "XXL") return true;
-  // match "2XL", "3XL", "4XL" or "2X", "3X"
   const m = s.match(/^(\d+)XL$/);
   if (m && Number(m[1]) >= 2) return true;
   const m2 = s.match(/^(\d+)X$/);
@@ -71,6 +69,9 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const [customHips, setCustomHips] = useState("");
   const [customShoulder, setCustomShoulder] = useState("");
 
+  // NEW: lining state
+  const [lining, setLining] = useState("without");
+
   const quickAddRef = useRef(null);
   const wrapperRef = useRef(null);
 
@@ -106,6 +107,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   useEffect(() => {
     if (showQuickAdd) {
       setSelectedSize((prev) => prev ?? sizeOptions[0]);
+      setLining("without");
     } else {
       setSelectedSize(null);
       setShowCustomInputs(false);
@@ -143,7 +145,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   }, [showQuickAdd, onDocumentClick]);
 
   const heightClass = size === "lg" ? "h-[420px] md:h-[460px]" : "h-[350px]";
-  const fav = inWishlist(product._id);
+  const fav = product ? inWishlist(product._id) : false;
 
   function buildCustomSizeObject() {
     if (!customBust && !customWaist && !customHips && !customShoulder) return null;
@@ -155,11 +157,20 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
     };
   }
 
+  // compute unit price for quick-add based on lining selection if product supports it
+  const getUnitPrice = () => {
+    if (!product) return 0;
+    if (product.hasLiningOption && String(lining).toLowerCase() === "with") {
+      const lp = Number(product.liningPrice);
+      if (Number.isFinite(lp) && lp > 0) return lp;
+    }
+    return Number(product.price || 0);
+  };
+
   const handleAddFromQuick = (e) => {
     e.preventDefault();
     e.stopPropagation();
     const customSize = buildCustomSizeObject();
-    // if neither size nor custom provided reject
     if (!selectedSize && !customSize) return;
 
     const extra = isLargeSize(selectedSize) ? EXTRA_FOR_LARGE : 0;
@@ -167,12 +178,13 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
     addItem({
       product: product._id,
       name: product.name,
-      price: Number(product.price),
+      price: Number(getUnitPrice()),
       image: images[0],
       size: selectedSize,
       qty: 1,
       customSize,
-      extra, // store surcharge per line
+      extra,
+      lining: product.hasLiningOption ? (String(lining || "").toLowerCase() === "with" ? "with" : "without") : null,
     });
     openMiniCart?.();
     setShowQuickAdd(false);
@@ -195,12 +207,12 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
 
   return (
     <Link
-      href={`/products/${product._id}`}
+      href={`/products/${product?._id}`}
       className="group relative cursor-pointer block"
       ref={wrapperRef}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
-      aria-label={`Open ${product.name}`}
+      aria-label={`Open ${product?.name}`}
     >
       <motion.div
         className={`relative w-full ${heightClass} overflow-hidden rounded-2xl shadow-sm`}
@@ -244,9 +256,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
           </button>
 
           <button
-            className={`p-2 rounded-full shadow hover:scale-110 transition-transform ${
-              fav ? "bg-red-500 text-white" : "bg-white"
-            }`}
+            className={`p-2 rounded-full shadow hover:scale-110 transition-transform ${fav ? "bg-red-500 text-white" : "bg-white"}`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -266,9 +276,9 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       </motion.div>
 
       <div className="text-center mt-3">
-        <h3 className="font-semibold text-2xl text-gray-800 line-clamp-1">{product.name}</h3>
+        <h3 className="font-semibold text-2xl text-gray-800 line-clamp-1">{product?.name}</h3>
         <p className="text-gray-600 text-lg font-semibold">
-          ₹{Number(product.price).toLocaleString("en-IN")}
+          ₹{Number(product?.price || 0).toLocaleString("en-IN")}
         </p>
       </div>
 
@@ -288,14 +298,14 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
               <div className="relative w-14 h-14 rounded overflow-hidden bg-gray-100">
                 <img
                   src={images[0]}
-                  alt={product.name}
+                  alt={product?.name}
                   className="w-full h-full object-cover"
                   onError={(e) => (e.currentTarget.src = "/placeholder.png")}
                 />
               </div>
               <div>
-                <div className="font-medium">{product.name}</div>
-                <div className="text-sm text-amber-700 font-semibold">₹{product.price}</div>
+                <div className="font-medium">{product?.name}</div>
+                <div className="text-sm text-amber-700 font-semibold">₹{getUnitPrice()}</div>
               </div>
             </div>
 
@@ -312,6 +322,38 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
             </button>
           </div>
 
+          {/* Lining selector if product allows it */}
+          {product?.hasLiningOption && (
+            <div className="mb-3">
+              <p className="text-sm font-semibold mb-2">Lining</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={(ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    setLining("without");
+                  }}
+                  className={`px-3 py-1 rounded-md border text-sm ${lining === "without" ? "bg-black text-white" : "bg-white"}`}
+                  type="button"
+                >
+                  Without lining (₹{Number(product.price)})
+                </button>
+                <button
+                  onClick={(ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    setLining("with");
+                  }}
+                  className={`px-3 py-1 rounded-md border text-sm ${lining === "with" ? "bg-black text-white" : "bg-white"}`}
+                  type="button"
+                >
+                  With lining (₹{Number(product.liningPrice)})
+                </button>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">Choose lining option. Price updates above.</div>
+            </div>
+          )}
+
           <div className="mb-3">
             <p className="text-sm font-semibold mb-2">Select Size</p>
             <div className="flex gap-2 flex-wrap">
@@ -324,9 +366,7 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
                     setSelectedSize(s);
                   }}
                   className={`border rounded-md py-1 px-2 text-sm transition-all ${
-                    selectedSize === s
-                      ? "bg-black text-white border-black"
-                      : "border-gray-300 text-gray-700 hover:border-black"
+                    selectedSize === s ? "bg-black text-white border-black" : "border-gray-300 text-gray-700 hover:border-black"
                   }`}
                 >
                   {s}

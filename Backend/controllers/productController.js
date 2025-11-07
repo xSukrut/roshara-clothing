@@ -17,10 +17,31 @@ async function resolveCollectionId(collectionInput) {
 //  Create product
 export const createProduct = async (req, res) => {
   try {
-    const { name, description, price, stock, images, collection, sizes, colors, discount } = req.body;
+    const {
+      name,
+      description,
+      price,
+      stock,
+      images,
+      collection,
+      sizes,
+      colors,
+      discount,
+      hasLiningOption,
+      liningPrice,
+    } = req.body;
+
     if (!name || !price) return res.status(400).json({ message: "Name and price are required" });
 
     const collectionId = await resolveCollectionId(collection);
+
+    // validate lining fields
+    if (hasLiningOption) {
+      const num = Number(liningPrice);
+      if (!Number.isFinite(num) || num <= 0) {
+        return res.status(400).json({ message: "Lining price must be a positive number when lining option is enabled" });
+      }
+    }
 
     const product = await Product.create({
       name,
@@ -32,6 +53,8 @@ export const createProduct = async (req, res) => {
       sizes,
       colors,
       discount,
+      hasLiningOption: Boolean(hasLiningOption),
+      liningPrice: hasLiningOption ? Number(liningPrice) : null,
     });
 
     res.status(201).json(product);
@@ -45,12 +68,12 @@ export const getProducts = async (req, res) => {
   try {
     const products = await Product.find()
       .populate("collection", "name")
-      .sort({ createdAt: -1 }); 
+      .sort({ createdAt: -1 });
     res.status(200).json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-}
+};
 
 //  Get one product
 export const getProductById = async (req, res) => {
@@ -63,7 +86,7 @@ export const getProductById = async (req, res) => {
   }
 };
 
-// Update 
+// Update
 export const updateProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -71,6 +94,20 @@ export const updateProduct = async (req, res) => {
 
     if (Object.prototype.hasOwnProperty.call(req.body, "collection")) {
       req.body.collection = await resolveCollectionId(req.body.collection);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "hasLiningOption")) {
+      const want = Boolean(req.body.hasLiningOption);
+      if (want) {
+        const lp = req.body.liningPrice ?? product.liningPrice;
+        const num = Number(lp);
+        if (!Number.isFinite(num) || num <= 0) {
+          return res.status(400).json({ message: "Lining price must be a positive number when lining option is enabled" });
+        }
+        req.body.liningPrice = Number(lp);
+      } else {
+        req.body.liningPrice = null;
+      }
     }
 
     Object.assign(product, req.body);
@@ -81,7 +118,7 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-// ✅ Delete
+//  Delete
 export const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -94,7 +131,6 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-// ✅ NEW: products by collection
 export const getProductsByCollection = async (req, res) => {
   try {
     const { id } = req.params; // collection id

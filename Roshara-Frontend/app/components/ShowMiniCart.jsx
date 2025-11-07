@@ -1,4 +1,3 @@
-// app/components/ShowMiniCart.jsx
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart, lineKey } from "@context/CartContext";
@@ -9,8 +8,7 @@ import { useEffect, useState } from "react";
 import { resolveImg } from "@/utils/img";
 
 export default function ShowMiniCart() {
-  const { items, removeItem, itemsPrice, shippingPrice, taxPrice = 0, totalPrice } =
-    useCart();
+  const { items, removeItem, itemsPrice, shippingPrice, taxPrice = 0, totalPrice } = useCart();
 
   const [miniCartOpen, setMiniCartOpen] = useState(false);
   const closeMiniCart = () => setMiniCartOpen(false);
@@ -33,14 +31,8 @@ export default function ShowMiniCart() {
         >
           {/* Header */}
           <div className="flex justify-between items-center mb-4 border-b border-gray-200 pb-3">
-            <h2 className="text-xl font-semibold tracking-wide text-[#44120F]">
-              Your Bag
-            </h2>
-            <button
-              onClick={closeMiniCart}
-              className="p-1.5 rounded-full hover:bg-gray-100 transition"
-              title="Close"
-            >
+            <h2 className="text-xl font-semibold tracking-wide text-[#44120F]">Your Bag</h2>
+            <button onClick={closeMiniCart} className="p-1.5 rounded-full hover:bg-gray-100 transition" title="Close">
               <X className="w-5 h-5 text-gray-600 hover:text-black transition" />
             </button>
           </div>
@@ -49,11 +41,7 @@ export default function ShowMiniCart() {
           {items.length === 0 ? (
             <div className="flex-1 flex flex-col justify-center items-center text-gray-500 py-8 text-sm">
               <p>Your cart is empty.</p>
-              <Link
-                href="/shop"
-                onClick={closeMiniCart}
-                className="mt-4 text-sm font-medium text-white bg-black px-4 py-2 rounded-full hover:bg-gray-900 transition"
-              >
+              <Link href="/shop" onClick={closeMiniCart} className="mt-4 text-sm font-medium text-white bg-black px-4 py-2 rounded-full hover:bg-gray-900 transition">
                 Continue Shopping
               </Link>
             </div>
@@ -61,8 +49,8 @@ export default function ShowMiniCart() {
             <>
               <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400">
                 {items.map((item) => {
-                  // line key should include customSize and extra
-                  const key = lineKey(item.product, item.size, item.customSize, item.extra);
+                  // line key should include customSize, extra and lining
+                  const key = lineKey(item.product, item.size, item.customSize, item.extra, item.lining);
                   const imgSrc = resolveImg(item.image);
 
                   const unitPrice = Number(item.price || 0);
@@ -80,41 +68,27 @@ export default function ShowMiniCart() {
                     >
                       {/* Image */}
                       <div className="relative w-18 h-18 rounded-lg overflow-hidden bg-gray-100 group">
-                        <Image
-                          src={imgSrc}
-                          alt={item.name}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                        <Image src={imgSourceFix(imgSrc)} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
                       </div>
 
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800 leading-tight">
-                          {item.name}
-                        </p>
+                        <p className="text-sm font-medium text-gray-800 leading-tight">{item.name}</p>
 
                         <p className="text-xs text-gray-500 mt-0.5 truncate">
                           {item.size && `Size: ${item.size} • `}
+                          {item.lining && `Lining: ${item.lining === "with" ? "With lining" : "Without lining"} • `}
                           ₹{unitPrice} × {qty}
                         </p>
 
-                        {extra > 0 && (
-                          <p className="text-xs text-amber-800 mt-1">
-                            +₹{extra} size surcharge
-                          </p>
-                        )}
+                        {extra > 0 && <p className="text-xs text-amber-800 mt-1">+₹{extra} size surcharge</p>}
 
-                        <div className="text-sm font-semibold mt-1">
-                          Line total: ₹{lineTotal}
-                        </div>
+                        <div className="text-sm font-semibold mt-1">Line total: ₹{lineTotal}</div>
                       </div>
 
                       {/* Remove */}
                       <button
-                        onClick={() =>
-                          removeItem(item.product, item.size, item.customSize || null, item.extra)
-                        }
+                        onClick={() => removeItem(item.product, item.size, item.customSize || null, item.extra, item.lining)}
                         className="p-1 rounded-full hover:bg-red-50 transition"
                         title="Remove item"
                       >
@@ -133,9 +107,7 @@ export default function ShowMiniCart() {
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
-                  <span className="font-medium">
-                    {shippingPrice === 0 ? "Free" : `₹${shippingPrice}`}
-                  </span>
+                  <span className="font-medium">{shippingPrice === 0 ? "Free" : `₹${shippingPrice}`}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax (5%)</span>
@@ -148,11 +120,7 @@ export default function ShowMiniCart() {
               </div>
 
               {/* Checkout Button */}
-              <Link
-                href="/cart"
-                onClick={closeMiniCart}
-                className="mt-5 block text-center bg-black text-white py-2.5 rounded-xl font-medium hover:bg-gray-900 active:scale-[0.98] transition-all"
-              >
+              <Link href="/cart" onClick={closeMiniCart} className="mt-5 block text-center bg-black text-white py-2.5 rounded-xl font-medium hover:bg-gray-900 active:scale-[0.98] transition-all">
                 Go to Checkout
               </Link>
             </>
@@ -161,4 +129,11 @@ export default function ShowMiniCart() {
       )}
     </AnimatePresence>
   );
+}
+
+/** small helper to ensure next/image src is valid for local strings */
+function imgSourceFix(src) {
+  if (!src) return "/placeholder.png";
+  if (src.startsWith("http") || src.startsWith("/")) return src;
+  return src;
 }

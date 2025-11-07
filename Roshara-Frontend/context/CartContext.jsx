@@ -1,4 +1,3 @@
-// context/CartContext.jsx
 "use client";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
@@ -38,17 +37,15 @@ function loadRaw() {
 function migrateLoadedItems(items = []) {
   return items.map((it) => {
     try {
-      // If an explicit extra > 0 was stored, keep it.
-      // Otherwise compute from size (so old items get the surcharge applied).
       const hasExplicitExtra = typeof it.extra === "number" && it.extra > 0;
       const computed = computeSurchargeForSize(it.size);
       const extra = hasExplicitExtra ? Number(it.extra || 0) : computed;
       return {
         ...it,
-        // Normalize numeric fields strictly
         price: Number(it.price || 0),
         qty: Number(it.qty || it.quantity || 1),
         extra: Number(extra || 0),
+        lining: it.lining ? String(it.lining) : null,
       };
     } catch {
       return {
@@ -56,6 +53,7 @@ function migrateLoadedItems(items = []) {
         price: Number(it.price || 0),
         qty: Number(it.qty || it.quantity || 1),
         extra: Number(it.extra || 0),
+        lining: it.lining ? String(it.lining) : null,
       };
     }
   });
@@ -69,9 +67,9 @@ function save(items) {
   }
 }
 
-// Helper: build a stable key per line item (product + size + custom signature + extra)
-export const lineKey = (product, size, customSize, extra = 0) =>
-  `${product}__${size || "NOSIZE"}__${customSize ? JSON.stringify(customSize) : "NOCUST"}__${Number(extra || 0)}`;
+// Helper: build a stable key per line item (product + size + custom signature + extra + lining)
+export const lineKey = (product, size, customSize, extra = 0, lining = null) =>
+  `${product}__${size || "NOSIZE"}__${customSize ? JSON.stringify(customSize) : "NOCUST"}__${Number(extra || 0)}__${lining || "NO_LIN"}`;
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
@@ -105,6 +103,7 @@ export function CartProvider({ children }) {
     qty = 1,
     customSize = null,
     extra = null, // allow null to mean "not provided"
+    lining = null, // "with" or "without" or null
   }) => {
     if (!product) return;
 
@@ -119,13 +118,14 @@ export function CartProvider({ children }) {
           ? Number(extra)
           : computeSurchargeForSize(size);
 
-      // find an existing item that matches product, size, customSize and extra
+      // find an existing item that matches product, size, customSize, extra and lining
       const idx = next.findIndex(
         (it) =>
           it.product === productId &&
           (it.size || null) === (size || null) &&
           sameCustom(it.customSize, customSize) &&
-          Number(it.extra || 0) === parsedExtra
+          Number(it.extra || 0) === parsedExtra &&
+          (it.lining || null) === (lining || null)
       );
 
       if (idx >= 0) {
@@ -141,29 +141,30 @@ export function CartProvider({ children }) {
           qty: Number(qty) || 1,
           customSize: customSize || null,
           extra: Number(parsedExtra || 0),
+          lining: lining || null,
         });
       }
       return next;
     });
   };
 
-  // Set quantity per product + size (+ optional customSize + optional extra)
-  // keep signature backward-compatible: setQty(product, size, qty) or setQty(product, size, qty, customSize, extra)
-  const setQty = (product, size, qty, customSize = null, extra = null) => {
+  // Set quantity per product + size (+ optional customSize + optional extra + lining)
+  const setQty = (product, size, qty, customSize = null, extra = null, lining = null) => {
     const productId = typeof product === "object" ? product._id : product;
     setItems((prev) =>
       prev.map((it) =>
         it.product === productId &&
         (it.size || null) === (size || null) &&
         (customSize ? sameCustom(it.customSize, customSize) : true) &&
-        (extra !== null ? Number(it.extra || 0) === Number(extra || 0) : true)
+        (extra !== null ? Number(it.extra || 0) === Number(extra || 0) : true) &&
+        (lining !== null ? (it.lining || null) === (lining || null) : true)
           ? { ...it, qty: Math.max(1, Number(qty) || 1) }
           : it
       )
     );
   };
 
-  const removeItem = (product, size = null, customSize = null, extra = null) => {
+  const removeItem = (product, size = null, customSize = null, extra = null, lining = null) => {
     const productId = typeof product === "object" ? product._id : product;
 
     setItems((prev) =>
@@ -173,7 +174,8 @@ export function CartProvider({ children }) {
             it.product === productId &&
             (it.size || null) === (size || null) &&
             (customSize ? sameCustom(it.customSize, customSize) : true) &&
-            (extra !== null ? Number(it.extra || 0) === Number(extra || 0) : true)
+            (extra !== null ? Number(it.extra || 0) === Number(extra || 0) : true) &&
+            (lining !== null ? (it.lining || null) === (lining || null) : true)
           )
       )
     );
@@ -192,11 +194,9 @@ export function CartProvider({ children }) {
     [items]
   );
 
-  // You can keep your shipping rules; simple placeholders here:
   const shippingPrice = 0;
   const totalPrice = itemsPrice + shippingPrice;
 
-  // optional: to open a mini cart if you have one
   const openMiniCart = () => document.dispatchEvent(new Event("openMiniCart"));
 
   return (
