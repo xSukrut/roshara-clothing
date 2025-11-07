@@ -41,62 +41,52 @@ function devAllowOrigin(origin) {
 
 const corsOptions = {
   origin(origin, cb) {
+    // allow server-to-server / non-browser requests (origin === undefined)
     if (!origin) return cb(null, true);
-    const ok = allowedOrigins.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin));
+
+    const ok = allowedOrigins.some((o) =>
+      o instanceof RegExp ? o.test(origin) : o === origin
+    );
+
     if (ok || (process.env.NODE_ENV !== "production" && devAllowOrigin(origin))) {
-      return cb(null, true);
+      return cb(null, true); // allow
     }
-    console.warn("🚫 Blocked by CORS:", origin);
-    return cb(new Error("Not allowed by CORS"));
+
+    // Deny: do NOT throw an error here — return false so cors middleware responds cleanly.
+    console.warn("🚫 Blocked by CORS (origin):", origin);
+    return cb(null, false);
   },
-  credentials: true,
-  optionsSuccessStatus: 200,
+  credentials: true, // set true if browser will send cookies; otherwise set false
+  methods: ["GET","HEAD","PUT","PATCH","POST","DELETE","OPTIONS"],
+  allowedHeaders: ["Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization"],
+  optionsSuccessStatus: 204,
 };
 
+// explicitly handle preflight with cors middleware
+app.options("*", cors(corsOptions));
+
+// apply CORS for all routes
 app.use(cors(corsOptions));
 
-app.use((req, res, next) => {
-  if (req.method === "OPTIONS") {
-    const origin = req.get("Origin");
-    let allowOrigin = "*";
-    try {
-      if (!origin) {
-        allowOrigin = "*";
-      } else {
-        const ok = allowedOrigins.some((o) => (o instanceof RegExp ? o.test(origin) : o === origin));
-        if (ok || (process.env.NODE_ENV !== "production" && devAllowOrigin(origin))) {
-          allowOrigin = origin;
-        }
-      }
-    } catch (e) {
-      allowOrigin = "*";
-    }
-
-    res.setHeader("Access-Control-Allow-Origin", allowOrigin);
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-    );
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-    return res.sendStatus(200);
-  }
-  return next();
-});
-
+// ----------------
+// request body parsers
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
+// static uploads
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
+// OPTIONAL: helpful logging middleware to show origin of incoming requests (remove in prod if noisy)
 app.use((req, res, next) => {
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
+  const origin = req.get("Origin") || "-";
+  // Only log suspicious origins or in non-prod
+  if (process.env.NODE_ENV !== "production" && origin !== "-") {
+    console.log(`[CORS] ${req.method} ${req.path} — Origin: ${origin}`);
+  }
   next();
 });
 
+// DB connect
 mongoose
   .connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
@@ -106,6 +96,7 @@ mongoose
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB connection failed:", err));
 
+// routes
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/collections", collectionRoutes);
