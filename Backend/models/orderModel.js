@@ -1,5 +1,14 @@
-// models/orderModel.js
 import mongoose from "mongoose";
+
+const customSizeSchema = new mongoose.Schema(
+  {
+    bust: { type: String },
+    waist: { type: String },
+    hips: { type: String },
+    shoulder: { type: String },
+  },
+  { _id: false }
+);
 
 const orderItemSchema = new mongoose.Schema({
   product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
@@ -7,6 +16,8 @@ const orderItemSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
   price: { type: Number, required: true }, // price per unit at time of order
   extra: { type: Number, default: 0 }, // surcharge per unit (e.g. XL fee)
+  customSize: { type: customSizeSchema, default: null },
+  lining: { type: String, enum: ["with", "without", null], default: null },
 });
 
 const upiSchema = new mongoose.Schema(
@@ -55,8 +66,8 @@ const orderSchema = new mongoose.Schema(
       default: "pending",
     },
 
-    upi: upiSchema,      
-    adminNote: String,   
+    upi: upiSchema,
+    adminNote: String,
 
     paidAt: Date,
     shippedAt: Date,

@@ -1,4 +1,3 @@
-// controllers/orderController.js
 import asyncHandler from "express-async-handler";
 import Order from "../models/orderModel.js";
 import Product from "../models/productModel.js";
@@ -7,6 +6,8 @@ import User from "../models/userModel.js";
 
 // surcharge rule (server-side source of truth)
 const SURCHARGE_FOR_XL_AND_ABOVE = 200;
+const XL_THRESHOLDS = { bust: 40, waist: 33, hips: 43, shoulder: 15 };
+
 function isLargeSizeLabel(size) {
   if (!size) return false;
   const s = String(size).toUpperCase().replace(/\s+/g, "");
@@ -18,10 +19,28 @@ function isLargeSizeLabel(size) {
   return false;
 }
 
+function isLargeByCustomMeasurements(custom = {}) {
+  try {
+    if (!custom) return false;
+    const bust = custom.bust ? Number(custom.bust) : null;
+    const waist = custom.waist ? Number(custom.waist) : null;
+    const hips = custom.hips ? Number(custom.hips) : null;
+    const shoulder = custom.shoulder ? Number(custom.shoulder) : null;
+
+    if (bust !== null && !Number.isNaN(bust) && bust > XL_THRESHOLDS.bust) return true;
+    if (waist !== null && !Number.isNaN(waist) && waist > XL_THRESHOLDS.waist) return true;
+    if (hips !== null && !Number.isNaN(hips) && hips > XL_THRESHOLDS.hips) return true;
+    if (shoulder !== null && !Number.isNaN(shoulder) && shoulder > XL_THRESHOLDS.shoulder) return true;
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export const createOrder = asyncHandler(async (req, res) => {
   try {
     console.log(">>> createOrder called -", new Date().toISOString());
-    console.log("User present:", !!req.user, req.user && { id: req.user._id, email: req.user.email });
     try {
       console.log("Payload (trim):", JSON.stringify(req.body).slice(0, 2000));
     } catch (e) {}
@@ -40,7 +59,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     }
 
     // normalize product id & qty
-    const orderItemsNorm = orderItems.map((it) => ({
+    const orderItemsNorm = orderItems.map((it) => ( {
       ...it,
       product: it.product || it._id || it.id,
       quantity: Number(it.quantity || it.qty || 1),
@@ -71,14 +90,16 @@ export const createOrder = asyncHandler(async (req, res) => {
 
       const qty = Number(item.quantity || 1);
       const size = item.size || null;
-      const extra = isLargeSizeLabel(size) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
+      const customSize = item.customSize || null;
+
+      // determine extra: size label OR custom measurements
+      const extra = isLargeSizeLabel(size) || isLargeByCustomMeasurements(customSize) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
 
       // Determine unit price server-side:
       // If product supports lining and customer requested lining === 'with' use product.liningPrice.
       // Otherwise use product.price.
       let unitPrice = Number(prod.price);
       if (prod.hasLiningOption && String(item.lining || "").toLowerCase() === "with") {
-        // protect: fallback to prod.price if liningPrice absent or invalid
         const lp = Number(prod.liningPrice);
         if (Number.isFinite(lp) && lp > 0) unitPrice = lp;
       }
@@ -89,6 +110,18 @@ export const createOrder = asyncHandler(async (req, res) => {
       item.extra = Number(extra);
       // keep lining metadata
       item.lining = prod.hasLiningOption ? (String(item.lining || "").toLowerCase() === "with" ? "with" : "without") : null;
+
+      // ensure customSize is a trimmed object if present
+      if (customSize) {
+        item.customSize = {
+          bust: customSize.bust ? String(customSize.bust).trim() : undefined,
+          waist: customSize.waist ? String(customSize.waist).trim() : undefined,
+          hips: customSize.hips ? String(customSize.hips).trim() : undefined,
+          shoulder: customSize.shoulder ? String(customSize.shoulder).trim() : undefined,
+        };
+      } else {
+        item.customSize = null;
+      }
 
       // accumulate itemsPrice (price + surcharge) * qty
       itemsPrice += (Number(unitPrice) + Number(extra)) * qty;

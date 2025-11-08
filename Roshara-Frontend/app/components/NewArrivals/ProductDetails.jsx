@@ -2,7 +2,7 @@
 import { ROSHARA_SIZES } from "../../constants/sizes";
 import { useMemo, useState } from "react";
 import { X } from "lucide-react";
-import { useCart } from "../../../context/CartContext";
+import { useCart } from "../../../context/CartContext"; // adjust path if needed
 import { resolveImg } from "@/utils/img";
 
 const SIZE_CHART = {
@@ -38,7 +38,9 @@ function imagesFromProduct(product) {
 
 // surcharge logic
 const EXTRA_FOR_LARGE = 200;
-function isLargeSize(size) {
+const XL_THRESHOLDS = { bust: 40, waist: 33, hips: 43, shoulder: 15 };
+
+function isLargeSizeLabel(size) {
   if (!size) return false;
   const s = String(size).toUpperCase().replace(/\s+/g, "");
   if (s === "XL" || s === "XXL") return true;
@@ -47,6 +49,25 @@ function isLargeSize(size) {
   const m2 = s.match(/^(\d+)X$/);
   if (m2 && Number(m2[1]) >= 2) return true;
   return false;
+}
+
+function isLargeByCustomMeasurements(custom = {}) {
+  try {
+    if (!custom) return false;
+    const bust = custom.bust ? Number(custom.bust) : null;
+    const waist = custom.waist ? Number(custom.waist) : null;
+    const hips = custom.hips ? Number(custom.hips) : null;
+    const shoulder = custom.shoulder ? Number(custom.shoulder) : null;
+
+    if (bust !== null && !Number.isNaN(bust) && bust > XL_THRESHOLDS.bust) return true;
+    if (waist !== null && !Number.isNaN(waist) && waist > XL_THRESHOLDS.waist) return true;
+    if (hips !== null && !Number.isNaN(hips) && hips > XL_THRESHOLDS.hips) return true;
+    if (shoulder !== null && !Number.isNaN(shoulder) && shoulder > XL_THRESHOLDS.shoulder) return true;
+
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export default function ProductDetails({ product, onClose, onAddToCart }) {
@@ -61,17 +82,22 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
 
   const measures = selected ? SIZE_CHART[selected] : null;
 
-  // NEW: lining
+  // NEW: lining + custom
   const [lining, setLining] = useState("without");
+  const [useCustom, setUseCustom] = useState(false);
+  const [customSize, setCustomSize] = useState({ bust: "", waist: "", hips: "", shoulder: "" });
 
   const addToCart = () => {
     setErr("");
-    if (!selected) {
-      setErr("Please select a size.");
+    if (!selected && !useCustom) {
+      setErr("Please select a size or provide custom measurements.");
       return;
     }
 
-    const extra = isLargeSize(selected) ? EXTRA_FOR_LARGE : 0;
+    // determine extra
+    const extra = isLargeSizeLabel(selected) || (useCustom && isLargeByCustomMeasurements(customSize))
+      ? EXTRA_FOR_LARGE
+      : 0;
 
     // compute unit price based on lining if product supports it
     let unitPrice = Number(product.price);
@@ -85,8 +111,14 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
       name: product.name,
       price: Number(unitPrice),
       image: gallery[0],
-      size: selected,
+      size: useCustom ? null : selected,
       qty,
+      customSize: useCustom ? {
+        bust: String(customSize.bust || "").trim(),
+        waist: String(customSize.waist || "").trim(),
+        hips: String(customSize.hips || "").trim(),
+        shoulder: String(customSize.shoulder || "").trim(),
+      } : null,
       extra,
       lining: product.hasLiningOption ? (String(lining || "").toLowerCase() === "with" ? "with" : "without") : null,
     };
@@ -169,12 +201,29 @@ export default function ProductDetails({ product, onClose, onAddToCart }) {
 
                 <div className="mt-3 flex flex-wrap gap-3">
                   {sizes.map((s) => (
-                    <button key={s} onClick={() => setSelected(s)} className={`min-w-48px h-10 rounded-full border px-3 text-sm ${selected === s ? "border-black" : "border-gray-300"} hover:border-black`}>
+                    <button key={s} onClick={() => { setUseCustom(false); setSelected(s); }} className={`min-w-48px h-10 rounded-full border px-3 text-sm ${selected === s ? "border-black" : "border-gray-300"} hover:border-black`}>
                       {s}
                     </button>
                   ))}
                 </div>
 
+                <div className="mt-3">
+                  <label className="inline-flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={useCustom} onChange={(e) => { setUseCustom(Boolean(e.target.checked)); if (e.target.checked) setSelected(null); }} />
+                    <span>Provide custom measurements</span>
+                  </label>
+                </div>
+
+                {useCustom && (
+                  <div className="mt-3 grid grid-cols-2 gap-2 max-w-lg">
+                    <input placeholder="Bust (inches)" value={customSize.bust} onChange={(e) => setCustomSize({ ...customSize, bust: e.target.value })} className="border rounded px-3 py-2" />
+                    <input placeholder="Waist (inches)" value={customSize.waist} onChange={(e) => setCustomSize({ ...customSize, waist: e.target.value })} className="border rounded px-3 py-2" />
+                    <input placeholder="Hips (inches)" value={customSize.hips} onChange={(e) => setCustomSize({ ...customSize, hips: e.target.value })} className="border rounded px-3 py-2" />
+                    <input placeholder="Shoulder (inches)" value={customSize.shoulder} onChange={(e) => setCustomSize({ ...customSize, shoulder: e.target.value })} className="border rounded px-3 py-2" />
+                    <div className="text-xs text-gray-500 col-span-2">A ₹{EXTRA_FOR_LARGE} surcharge applies if any measurement exceeds XL thresholds.</div>
+                  </div>
+                )}
+                
                 {measures && (
                   <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
                     <Spec label="Bust" value={measures.bust} />

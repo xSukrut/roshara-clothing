@@ -8,6 +8,8 @@ const STORAGE_KEY = "cart_items_v2";
 
 // --- Server/client shared surcharge rule (keep in sync with backend)
 const SURCHARGE_FOR_XL_AND_ABOVE = 200;
+const XL_THRESHOLDS = { bust: 40, waist: 33, hips: 43, shoulder: 15 };
+
 function isLargeSizeLabel(size) {
   if (!size) return false;
   const s = String(size).toUpperCase().replace(/\s+/g, "");
@@ -18,7 +20,26 @@ function isLargeSizeLabel(size) {
   if (m2 && Number(m2[1]) >= 2) return true;
   return false;
 }
-function computeSurchargeForSize(size) {
+function isLargeByCustomMeasurements(custom = {}) {
+  try {
+    if (!custom) return false;
+    const b = custom.bust ? Number(custom.bust) : null;
+    const w = custom.waist ? Number(custom.waist) : null;
+    const h = custom.hips ? Number(custom.hips) : null;
+    const s = custom.shoulder ? Number(custom.shoulder) : null;
+
+    if (b !== null && !Number.isNaN(b) && b > XL_THRESHOLDS.bust) return true;
+    if (w !== null && !Number.isNaN(w) && w > XL_THRESHOLDS.waist) return true;
+    if (h !== null && !Number.isNaN(h) && h > XL_THRESHOLDS.hips) return true;
+    if (s !== null && !Number.isNaN(s) && s > XL_THRESHOLDS.shoulder) return true;
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+function computeSurchargeForSize(size, customSize = null) {
+  if (customSize && isLargeByCustomMeasurements(customSize)) return SURCHARGE_FOR_XL_AND_ABOVE;
   return isLargeSizeLabel(size) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
 }
 // -----------------------------------------------------------
@@ -38,7 +59,7 @@ function migrateLoadedItems(items = []) {
   return items.map((it) => {
     try {
       const hasExplicitExtra = typeof it.extra === "number" && it.extra > 0;
-      const computed = computeSurchargeForSize(it.size);
+      const computed = computeSurchargeForSize(it.size, it.customSize);
       const extra = hasExplicitExtra ? Number(it.extra || 0) : computed;
       return {
         ...it,
@@ -112,11 +133,11 @@ export function CartProvider({ children }) {
     setItems((prev) => {
       const next = [...prev];
 
-      // If caller provided a positive extra, use it; otherwise compute from size
+      // If caller provided a positive extra, use it; otherwise compute from size/customSize
       const parsedExtra =
         typeof extra === "number" && extra > 0
           ? Number(extra)
-          : computeSurchargeForSize(size);
+          : computeSurchargeForSize(size, customSize);
 
       // find an existing item that matches product, size, customSize, extra and lining
       const idx = next.findIndex(

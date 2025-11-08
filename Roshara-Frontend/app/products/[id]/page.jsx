@@ -24,6 +24,8 @@ const SIZE_CHART = {
 };
 
 const ALL_SIZES = Object.keys(SIZE_CHART); // for fallback
+const SURCHARGE_FOR_XL_AND_ABOVE = 200;
+const XL_THRESHOLDS = { bust: 40, waist: 33, hips: 43, shoulder: 15 };
 
 export default function ProductDetailsPage() {
   const { id } = useParams();
@@ -79,6 +81,36 @@ export default function ProductDetailsPage() {
 
   const { name, brand, price, mrp, discountPercent, description, specs } = product || {};
 
+  function isLargeByCustomMeasurements(custom = {}) {
+    try {
+      if (!custom) return false;
+      const b = custom.bust ? Number(custom.bust) : null;
+      const w = custom.waist ? Number(custom.waist) : null;
+      const h = custom.hips ? Number(custom.hips) : null;
+      const s = custom.shoulder ? Number(custom.shoulder) : null;
+
+      if (b !== null && !Number.isNaN(b) && b > XL_THRESHOLDS.bust) return true;
+      if (w !== null && !Number.isNaN(w) && w > XL_THRESHOLDS.waist) return true;
+      if (h !== null && !Number.isNaN(h) && h > XL_THRESHOLDS.hips) return true;
+      if (s !== null && !Number.isNaN(s) && s > XL_THRESHOLDS.shoulder) return true;
+
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  function isLargeSizeLabel(sizeLabel) {
+    if (!sizeLabel) return false;
+    const s = String(sizeLabel).toUpperCase().replace(/\s+/g, "");
+    if (s === "XL" || s === "XXL") return true;
+    const m = s.match(/^(\d+)XL$/);
+    if (m && Number(m[1]) >= 2) return true;
+    const m2 = s.match(/^(\d+)X$/);
+    if (m2 && Number(m2[1]) >= 2) return true;
+    return false;
+  }
+
   function handleAdd() {
     if (!useCustom && sizesAvailable.length && !size) {
       alert("Please select a size.");
@@ -107,15 +139,24 @@ export default function ProductDetailsPage() {
       if (Number.isFinite(lp) && lp > 0) unitPrice = lp;
     }
 
+    // compute surcharge: either by size label OR by custom measurements (if using custom)
+    let extra = 0;
+    if (useCustom) {
+      extra = isLargeByCustomMeasurements(customSizeObj) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
+    } else {
+      extra = isLargeSizeLabel(size) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
+    }
+
     addItem({
       product: product._id,
       name: product.name,
       price: unitPrice,
       qty: 1,
-      size: useCustom ? "Custom" : size || null,
+      size: useCustom ? null : size || null,
       customSize: customSizeObj,
       image: gallery[0],
       lining: product.hasLiningOption ? (String(lining || "").toLowerCase() === "with" ? "with" : "without") : null,
+      extra: Number(extra || 0),
     });
     openMiniCart?.();
   }
@@ -303,7 +344,7 @@ export default function ProductDetailsPage() {
               </label>
             </div>
 
-            <div className="text-xs text-gray-500 mt-2">When custom measurements are used, regular sizes will be disabled and the cart item will contain your measurements.</div>
+            <div className="text-xs text-gray-500 mt-2">When custom measurements are used, regular sizes will be disabled and the cart item will contain your measurements. A ₹{SURCHARGE_FOR_XL_AND_ABOVE} surcharge applies if any measurement exceeds the XL thresholds.</div>
           </div>
         )}
 
