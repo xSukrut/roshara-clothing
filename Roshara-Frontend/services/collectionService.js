@@ -1,44 +1,66 @@
-import axios from "axios";
-import { API_BASE_URL } from "../utils/api";
+// services/collectionService.js
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/+$/, "");
 
-const API_BASE =
-  (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/$/, "");
-
-
-async function getJSON(url, options) {
+async function doFetch(path, opts = {}) {
+  const url = `${API_BASE}${path}`;
   const res = await fetch(url, {
-    ...options,
-    
-    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    ...opts,
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status} ${res.statusText}: ${text}`);
+    const txt = await res.text().catch(() => "");
+    throw new Error(`API ${res.status} ${res.statusText} - ${txt || url}`);
   }
   return res.json();
 }
 
 export async function getAllCollections() {
-  return getJSON(`${API_BASE}/collections`);
+  try {
+    const data = await doFetch("/collections");
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error("getAllCollections error:", err);
+    return [];
+  }
 }
 
 export async function getCollection(id) {
-  if (!id) throw new Error("getCollection: id is required");
-  return getJSON(`${API_BASE}/collections/${id}`);
+  if (!id) return null;
+  try {
+    return await doFetch(`/collections/${id}`);
+  } catch (err) {
+    console.error(`getCollection ${id} error:`, err);
+    return null;
+  }
 }
 
-export const getCollectionProductsAdmin = async (id, token) => {
-  const { data } = await axios.get(`${API_BASE_URL}/collections/${id}/products`, {
-    headers: { Authorization: `Bearer ${token}` },
+// Admin helpers (token required)
+export async function getCollectionProductsAdmin(id, token) {
+  if (!id) throw new Error("id required");
+  const res = await fetch(`${API_BASE}/collections/${id}/products`, {
+    headers: { Authorization: token ? `Bearer ${token}` : undefined },
   });
-  return data;
-};
+  if (!res.ok) throw new Error(`Failed to load collection products (${res.status})`);
+  return res.json();
+}
 
-export const updateCollectionProductsAdmin = async (id, payload, token) => {
-  const { data } = await axios.put(
-    `${API_BASE_URL}/collections/${id}/products`,
-    payload,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  return data;
+export async function updateCollectionProductsAdmin(id, payload = {}, token) {
+  if (!id) throw new Error("id required");
+  const res = await fetch(`${API_BASE}/collections/${id}/products`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: token ? `Bearer ${token}` : undefined,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Failed update (${res.status})`);
+  return res.json();
+}
+
+export default {
+  getAllCollections,
+  getCollection,
+  getCollectionProductsAdmin,
+  updateCollectionProductsAdmin,
 };

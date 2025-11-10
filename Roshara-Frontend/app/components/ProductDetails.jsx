@@ -1,8 +1,8 @@
 "use client";
-import { ROSHARA_SIZES } from "../../constants/sizes";
+import { ROSHARA_SIZES } from "../constants/sizes";
 import { useMemo, useState } from "react";
 import { X } from "lucide-react";
-import { useCart } from "../../../context/CartContext"; // adjust path if needed
+import { useCart } from "../../context/CartContext"; // adjust path if needed
 import { resolveImg } from "@/utils/img";
 
 const SIZE_CHART = {

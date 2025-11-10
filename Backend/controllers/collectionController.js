@@ -1,3 +1,4 @@
+// controllers/collectionController.js
 import Collection from "../models/collectionModel.js";
 import Product from "../models/productModel.js";
 
@@ -28,16 +29,17 @@ export const createCollection = async (req, res) => {
     if (existing)
       return res.status(400).json({ message: "Collection already exists" });
 
-    const image = pickImage(req.body); // <— NEW: capture image/url
+    const image = pickImage(req.body); // capture image/url
 
     const collection = await Collection.create({
       name: name.trim(),
       description,
-      image, // <— persist
+      image,
     });
 
     res.status(201).json(collection);
   } catch (error) {
+    console.error("createCollection error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -48,6 +50,7 @@ export const getCollections = async (req, res) => {
     const collections = await Collection.find().sort({ createdAt: -1 });
     res.status(200).json(collections);
   } catch (error) {
+    console.error("getCollections error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -59,6 +62,7 @@ export const getCollectionById = async (req, res) => {
     if (!collection) return res.status(404).json({ message: "Collection not found" });
     res.status(200).json(collection);
   } catch (error) {
+    console.error("getCollectionById error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -81,6 +85,7 @@ export const updateCollection = async (req, res) => {
     const updated = await collection.save();
     res.status(200).json(updated);
   } catch (error) {
+    console.error("updateCollection error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -92,8 +97,10 @@ export const deleteCollection = async (req, res) => {
     if (!collection) return res.status(404).json({ message: "Collection not found" });
 
     await collection.deleteOne();
+    // Optionally unset 'collection' on products? We leave products untouched; admin manages via product assignment endpoint
     res.status(200).json({ message: "Collection deleted successfully" });
   } catch (error) {
+    console.error("deleteCollection error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -105,7 +112,6 @@ export const getCollectionProductsAdmin = async (req, res) => {
     const id = req.params.id;
 
     const inCollection = await Product.find({ collection: id }).select("name price images");
-
     const outside = await Product.find({
       $or: [
         { collection: { $exists: false } },
@@ -116,6 +122,7 @@ export const getCollectionProductsAdmin = async (req, res) => {
 
     res.json({ inCollection, outside });
   } catch (e) {
+    console.error("getCollectionProductsAdmin error:", e);
     res.status(500).json({ message: e.message });
   }
 };
@@ -140,6 +147,7 @@ export const updateCollectionProductsAdmin = async (req, res) => {
       removed: removeRes.modifiedCount,
     });
   } catch (e) {
+    console.error("updateCollectionProductsAdmin error:", e);
     res.status(500).json({ message: e.message });
   }
 };

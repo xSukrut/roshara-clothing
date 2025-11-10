@@ -2,9 +2,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import ProductCard from "@components/NewArrivals/ProductCard";
-import ProductDetails from "@components/NewArrivals/ProductDetails";
-import { getAllProducts } from "@services/productService";
+import ProductCard from "../components/ProductCard";
+import ProductDetails from "../components/ProductDetails";
+import { getAllProducts } from "../../services/productService";
 
 export default function ShopAllPage() {
   const [all, setAll] = useState([]);

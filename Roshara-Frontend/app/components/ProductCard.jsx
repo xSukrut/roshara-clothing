@@ -4,9 +4,9 @@ import { motion } from "framer-motion";
 import { Search, ShoppingCart, Heart } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useCart } from "../../../context/CartContext";
-import { useWishlist } from "../../../context/WishlistContext";
-import { ROSHARA_SIZES } from "../../constants/sizes";
+import { useCart } from "../../context/CartContext";
+import { useWishlist } from "../../context/WishlistContext";
+import { ROSHARA_SIZES } from "../constants/sizes";
 
 const API_BASE =
   (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api")

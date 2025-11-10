@@ -1,47 +1,85 @@
-// app/components/CollectionCard.jsx
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { resolveImg } from "@/utils/img";
 
 export default function CollectionCard({ collection }) {
-  // Prefer the normalized resolver so we handle:
-  // - Absolute Cloudinary URLs
-  // - Local `/uploads/...` served by your backend
-  // - Any alternate fields you might send
-  const cover = resolveImg(
-    collection?.image || collection?.cover || collection?.imageUrl
-  );
-
   const title = collection?.name || "Collection";
+  const desc = collection?.description || "";
 
   return (
     <Link
       href={`/collections/${collection?._id}`}
-      className="group relative block rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300"
+      className="group block h-full rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-300"
+      aria-label={`Open collection ${title}`}
     >
-      <div className="relative h-60 w-full">
-        <Image
-          src={cover || "/placeholder.png"}
-          alt={title}
-          fill
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="object-cover transform group-hover:scale-110 transition-transform duration-500 ease-in-out"
-          priority={false}
-        />
-        <div className="absolute inset-0 bg-black/50 group-hover:bg-black/60 transition-all duration-300" />
-      </div>
+      <div
+        className="
+          bg-white
+          border border-gray-100
+          rounded-2xl
+          p-6 md:p-8
+          h-full
+          flex flex-col justify-between
+        "
+      >
+        {/* Top meta (keeps vertical rhythm consistent) */}
+        <div className="flex items-start justify-between">
+          <span className="text-xs font-semibold uppercase text-gray-400 tracking-wide">
+            Collection
+          </span>
+        </div>
 
-      <div className="absolute inset-0 flex flex-col justify-center items-center text-center text-white px-4">
-        <h3 className="text-xl font-semibold tracking-wide drop-shadow-md">
-          {title}
-        </h3>
-        {collection?.description ? (
-          <p className="text-sm mt-2 text-gray-200 line-clamp-2 max-w-xs">
-            {collection.description}
-          </p>
-        ) : null}
+        {/* Middle: Title + Description */}
+        <div className="mt-4">
+          <h3
+            className="
+              text-2xl md:text-3xl font-extrabold
+              text-gray-900
+              leading-tight
+              mb-4
+              line-clamp-2
+            "
+          >
+            {title}
+          </h3>
+
+          {desc ? (
+            <div
+              className="
+                bg-gray-50 border border-gray-100
+                rounded-lg p-4
+                text-gray-700 text-sm
+                leading-relaxed
+                shadow-sm
+                max-w-none
+              "
+            >
+              <p className="line-clamp-3">{desc}</p>
+            </div>
+          ) : (
+            // keep space even when description missing to preserve card rhythm
+            <div className="h-12" aria-hidden />
+          )}
+        </div>
+
+        {/* Footer / Action: pushed to bottom by flex layout */}
+        <div className="mt-6 flex items-center justify-end">
+          <span
+            className="
+              inline-block
+              bg-white/95
+              border border-gray-200
+              text-gray-800
+              px-4 py-2 rounded-md
+              text-sm font-medium
+              shadow
+              group-hover:bg-white
+              transition-colors duration-200
+            "
+          >
+            View Collection
+          </span>
+        </div>
       </div>
     </Link>
   );

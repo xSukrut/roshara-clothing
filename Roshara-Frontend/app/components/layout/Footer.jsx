@@ -8,7 +8,6 @@ export default function Footer() {
   return (
     <footer className="bg-[#f8f7f5] border-t border-gray-200 mt-16">
       <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-4 gap-10 text-gray-700">
-        
         {/* Logo + About */}
         <div>
           <Link href="/" className="inline-block mb-4">
@@ -21,7 +20,7 @@ export default function Footer() {
             />
           </Link>
           <p className="text-sm leading-relaxed">
-            Tailored, not stitched — Roshara offers curated traditional wear 
+            Tailored, not stitched — Roshara offers curated traditional wear
             crafted with elegance and comfort in mind.
           </p>
         </div>
@@ -30,9 +29,21 @@ export default function Footer() {
         <div>
           <h3 className="text-lg font-semibold mb-3">Shop</h3>
           <ul className="space-y-2 text-sm">
-            <li><Link href="/new-arrivals" className="hover:underline">New Arrivals</Link></li>
-            <li><Link href="/shop" className="hover:underline">Shop All</Link></li>
-            {/* <li><Link href="/collections" className="hover:underline">Collections</Link></li> */}
+            <li>
+              <Link href="/new-arrivals" className="hover:underline">
+                New Arrivals
+              </Link>
+            </li>
+            <li>
+              <Link href="/shop" className="hover:underline">
+                Shop All
+              </Link>
+            </li>
+            <li>
+              <Link href="/collections" className="hover:underline">
+                Shop by Collections
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -40,10 +51,26 @@ export default function Footer() {
         <div>
           <h3 className="text-lg font-semibold mb-3">Company</h3>
           <ul className="space-y-2 text-sm">
-            <li><Link href="/about" className="hover:underline">Our Story</Link></li>
-            <li><Link href="/contact" className="hover:underline">Contact Us</Link></li>
-            <li><Link href="#" className="hover:underline">Terms & Conditions</Link></li>
-            <li><Link href="#" className="hover:underline">Privacy Policy</Link></li>
+            <li>
+              <Link href="/about" className="hover:underline">
+                Our Story
+              </Link>
+            </li>
+            <li>
+              <Link href="/contact" className="hover:underline">
+                Contact Us
+              </Link>
+            </li>
+            <li>
+              <Link href="#" className="hover:underline">
+                Terms & Conditions
+              </Link>
+            </li>
+            <li>
+              <Link href="#" className="hover:underline">
+                Privacy Policy
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -58,7 +85,7 @@ export default function Footer() {
               <Mail size={16} /> roshara.official@gmail.com
             </li>
             <li className="flex items-center gap-2">
-              <Instagram size={16} /> 
+              <Instagram size={16} />
               <Link
                 href="https://www.instagram.com/roshara.official"
                 target="_blank"

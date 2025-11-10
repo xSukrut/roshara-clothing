@@ -1,7 +1,5 @@
 // services/productService.js
-
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api")
-  .replace(/\/+$/, "");
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/+$/, "");
 
 // small helper
 async function doFetch(path, opts = {}) {
@@ -27,8 +25,25 @@ async function doFetch(path, opts = {}) {
   }
 }
 
-export async function getAllProducts() {
+/**
+ * options:
+ *   { collection: "<collectionId>" }  -> will try server-side filter first via query param
+ */
+export async function getAllProducts(options = {}) {
   try {
+    const { collection } = options || {};
+    if (collection) {
+      // prefer server-side filtering if backend supports it
+      try {
+        const q = new URLSearchParams({ collection }).toString();
+        const data = await doFetch(`/products?${q}`);
+        return Array.isArray(data) ? data : [];
+      } catch (err) {
+        // fallback to fetching all and client filtering
+        console.warn("Server-side collection filter failed, falling back to client-side filter", err);
+      }
+    }
+
     const data = await doFetch("/products");
     return Array.isArray(data) ? data : [];
   } catch (err) {

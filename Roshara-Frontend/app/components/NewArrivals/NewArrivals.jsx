@@ -2,8 +2,8 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { getAllProducts } from "../../../services/productService";
-import ProductCard from "../NewArrivals/ProductCard";
-import ProductDetails from "../NewArrivals/ProductDetails";
+import ProductCard from "../ProductCard"
+import ProductDetails from "../ProductDetails";
 
 export default function NewArrivals() {
   const [all, setAll] = useState([]);

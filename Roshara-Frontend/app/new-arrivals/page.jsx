@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getAllProducts } from "@services/productService";
 import ProductCard from "@components/NewArrivals/ProductCard";
-import ProductDetails from "@components/NewArrivals/ProductDetails";
+import ProductDetails from "@/app/components/ProductDetails";
 
 export default function NewArrivalsPage() {
   const [all, setAll] = useState([]);
