@@ -38,13 +38,12 @@ export default function Navbar() {
   // ===== Desktop "Shop" dropdown (hover) =====
   const shopRef = useRef(null);
 
-  // Close dropdowns on outside click
+  // Close dropdowns on outside click (keeps behavior stable)
   useEffect(() => {
     const onDoc = (e) => {
       if (shopRef.current && !shopRef.current.contains(e.target)) {
-        // nothing to do — hover-based dropdown doesn't store explicit open state
+        // keep hover-based behavior (no explicit open state)
       }
-      // About handled by group hover; keep behavior same as before
     };
     document.addEventListener("click", onDoc);
     return () => document.removeEventListener("click", onDoc);
@@ -134,7 +133,7 @@ export default function Navbar() {
             </Link>
           </li>
 
-          {/* About (existing) */}
+          {/* About */}
           <li className="relative group">
             <div className={`flex items-center gap-1 cursor-pointer ${hoverClass} py-2`}>
               <span className={`${isAboutActive ? "underline underline-offset-8 decoration-2" : ""}`}>
@@ -250,7 +249,15 @@ export default function Navbar() {
                 <li><button onClick={logout} className="block w-full text-left">Logout</button></li>
               </>
             ) : (
-              <li className="pt-2"><Link href="/auth/login" className="block">Login</Link></li>
+              // <-- UPDATED: show both Login + Register in the mobile sidebar
+              <>
+                <li className="pt-2">
+                  <Link href="/auth/login" className="block font-medium">Login</Link>
+                </li>
+                <li>
+                  <Link href="/auth/register" className="block font-medium">Register</Link>
+                </li>
+              </>
             )}
 
             <li className="pt-4 border-t">
