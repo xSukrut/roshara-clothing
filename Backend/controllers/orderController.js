@@ -1,3 +1,4 @@
+// orderController.js
 import asyncHandler from "express-async-handler";
 import Order from "../models/orderModel.js";
 import Product from "../models/productModel.js";
@@ -40,11 +41,6 @@ function isLargeByCustomMeasurements(custom = {}) {
 
 export const createOrder = asyncHandler(async (req, res) => {
   try {
-    console.log(">>> createOrder called -", new Date().toISOString());
-    try {
-      console.log("Payload (trim):", JSON.stringify(req.body).slice(0, 2000));
-    } catch (e) {}
-
     const {
       orderItems,
       shippingAddress,
@@ -59,7 +55,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     }
 
     // normalize product id & qty
-    const orderItemsNorm = orderItems.map((it) => ( {
+    const orderItemsNorm = orderItems.map((it) => ({
       ...it,
       product: it.product || it._id || it.id,
       quantity: Number(it.quantity || it.qty || 1),
@@ -68,23 +64,18 @@ export const createOrder = asyncHandler(async (req, res) => {
     // Validate items quickly
     for (const [i, item] of orderItemsNorm.entries()) {
       if (!item?.product) {
-        console.warn("createOrder: missing product id at index", i, item);
         return res.status(400).json({ message: `Missing product id for item #${i + 1}` });
       }
       if (!Number.isFinite(item.quantity) || Number(item.quantity) < 1) {
-        console.warn("createOrder: invalid qty at index", i, item);
         return res.status(400).json({ message: `Invalid quantity for item #${i + 1}` });
       }
     }
 
     // compute items price and hydrate name/price
-    // IMPORTANT: server decides 'extra' and price based on product and requested lining (do not trust client)
     let itemsPrice = 0;
-    for (const [idx, item] of orderItemsNorm.entries()) {
-      console.log(`Processing item ${idx}: product=${item.product} size=${item.size} qty=${item.quantity} lining=${item.lining}`);
+    for (const item of orderItemsNorm) {
       const prod = await Product.findById(item.product);
       if (!prod) {
-        console.error("createOrder: Product not found", item.product);
         return res.status(400).json({ message: `Product ${item.product} not found` });
       }
 
@@ -92,26 +83,19 @@ export const createOrder = asyncHandler(async (req, res) => {
       const size = item.size || null;
       const customSize = item.customSize || null;
 
-      // determine extra: size label OR custom measurements
       const extra = isLargeSizeLabel(size) || isLargeByCustomMeasurements(customSize) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
 
-      // Determine unit price server-side:
-      // If product supports lining and customer requested lining === 'with' use product.liningPrice.
-      // Otherwise use product.price.
       let unitPrice = Number(prod.price);
       if (prod.hasLiningOption && String(item.lining || "").toLowerCase() === "with") {
         const lp = Number(prod.liningPrice);
         if (Number.isFinite(lp) && lp > 0) unitPrice = lp;
       }
 
-      // hydrate item fields saved to DB
       item.name = prod.name;
-      item.price = Number(unitPrice); // unit price saved
+      item.price = Number(unitPrice);
       item.extra = Number(extra);
-      // keep lining metadata
       item.lining = prod.hasLiningOption ? (String(item.lining || "").toLowerCase() === "with" ? "with" : "without") : null;
 
-      // ensure customSize is a trimmed object if present
       if (customSize) {
         item.customSize = {
           bust: customSize.bust ? String(customSize.bust).trim() : undefined,
@@ -123,7 +107,6 @@ export const createOrder = asyncHandler(async (req, res) => {
         item.customSize = null;
       }
 
-      // accumulate itemsPrice (price + surcharge) * qty
       itemsPrice += (Number(unitPrice) + Number(extra)) * qty;
     }
 
@@ -191,7 +174,6 @@ export const createOrder = asyncHandler(async (req, res) => {
       try {
         if (coupon.special) {
           await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } }, { new: true });
-        } else {
         }
       } catch (incErr) {
         console.error("Failed to increment coupon usedCount:", incErr);
@@ -230,7 +212,14 @@ export const submitUpiProof = asyncHandler(async (req, res) => {
 });
 
 export const getOrderById = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id).populate("user", "name email");
+  const order = await Order.findById(req.params.id)
+    .populate("user", "name email")
+    // populate product reference information inside orderItems
+    .populate({
+      path: "orderItems.product",
+      select: "name images price hasLiningOption liningPrice",
+    });
+
   if (!order) return res.status(404).json({ message: "Order not found" });
 
   const isOwner = String(order.user?._id) === String(req.user._id);
@@ -242,7 +231,11 @@ export const getOrderById = asyncHandler(async (req, res) => {
 });
 
 export const getMyOrders = asyncHandler(async (req, res) => {
-  const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
+  const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 })
+    .populate({
+      path: "orderItems.product",
+      select: "name images price hasLiningOption liningPrice",
+    });
   res.json(orders);
 });
 
@@ -274,12 +267,19 @@ export const adminListOrders = asyncHandler(async (req, res) => {
     filter.$or = filter.$or ? [...filter.$or, ...idOr] : idOr;
   }
 
-  const orders = await Order.find(filter).populate("user", "name email").sort({ createdAt: -1 });
+  // Populate user and the product inside orderItems so frontend can access product.name/images etc.
+  const orders = await Order.find(filter)
+    .populate("user", "name email")
+    .populate({
+      path: "orderItems.product",
+      select: "name images price hasLiningOption liningPrice",
+    })
+    .sort({ createdAt: -1 });
 
   res.json(orders);
 });
 
-export const updateOrderStatus = async (req, res) => {
+export const updateOrderStatus = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body; // "paid" | "rejected" | "pending_verification"
@@ -304,9 +304,16 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     const saved = await order.save();
-    res.json(saved);
+    // return updated with populated product/user for convenience
+    const populated = await Order.findById(saved._id)
+      .populate("user", "name email")
+      .populate({
+        path: "orderItems.product",
+        select: "name images price hasLiningOption liningPrice",
+      });
+    res.json(populated);
   } catch (e) {
     console.error("updateOrderStatus error:", e);
     res.status(500).json({ message: "Server error updating order" });
   }
-};
+});

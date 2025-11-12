@@ -1,9 +1,13 @@
+// app/admin/orders/page.jsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../context/AuthContext";
-import { listOrdersAdmin, adminVerifyOrder, adminUpdateOrderStatus } from "../../../services/orderService";
+import {
+  listOrdersAdmin,
+  adminUpdateOrderStatus,
+} from "../../../services/orderService";
 
 export default function AdminOrdersPage() {
   const router = useRouter();
@@ -33,7 +37,13 @@ export default function AdminOrdersPage() {
       const data = await listOrdersAdmin(token, { q, status });
       setOrders(Array.isArray(data) ? data : []);
     } catch (e) {
-      setError(e?.response?.data?.message || "Failed to load orders");
+      console.error("Failed to load admin orders:", e);
+      const message =
+        e?.response?.data?.message ||
+        e?.message ||
+        "Failed to load orders. Check backend logs.";
+      setError(message);
+      setOrders([]);
     }
   };
 
@@ -44,28 +54,29 @@ export default function AdminOrdersPage() {
   }, [token, loading]);
 
   const handleFilter = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     await load();
   };
 
-const mark = async (id, action) => {
-  try {
-    setBusyId(id);
-    // action is "paid" or "rejected"
-    await adminUpdateOrderStatus(token, id, action);
-    await load();
-  } catch (e) {
-    setError(e?.response?.data?.message || "Update failed");
-  } finally {
-    setBusyId(null);
-  }
-}
+  const mark = async (id, action) => {
+    try {
+      setBusyId(id);
+      // action is "paid" or "rejected"
+      await adminUpdateOrderStatus(token, id, action);
+      await load();
+    } catch (e) {
+      console.error("Update failed:", e);
+      setError(e?.response?.data?.message || e?.message || "Update failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   if (loading || !user) return <div className="p-6">Loading…</div>;
   if (!(user.role === "admin" || user.isAdmin)) return null;
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <div className="max-w-8xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">Orders (Admin)</h1>
 
       <form onSubmit={handleFilter} className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -90,15 +101,17 @@ const mark = async (id, action) => {
         </button>
       </form>
 
-      {error && <p className="text-red-600 mb-3">{error}</p>}
+      {error && <p className="text-red-600 mb-3">Error: {error}</p>}
 
       <div className="overflow-x-auto border rounded">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50">
-            <tr className="text-left">
+            <tr className="text-left align-top">
               <Th>#</Th>
               <Th>Order</Th>
               <Th>User</Th>
+              <Th>Items</Th>
+              <Th>Ship To</Th>
               <Th>Amount</Th>
               <Th>Pay Method</Th>
               <Th>Status</Th>
@@ -109,17 +122,68 @@ const mark = async (id, action) => {
           </thead>
           <tbody>
             {orders.map((o, idx) => (
-              <tr key={o._id} className="border-t">
+              <tr key={o._id} className="border-t align-top">
                 <Td>{idx + 1}</Td>
                 <Td className="font-mono">{o._id}</Td>
+
                 <Td>
                   <div className="flex flex-col">
                     <span className="font-medium">{o.user?.name || "-"}</span>
                     <span className="text-gray-500">{o.user?.email || "-"}</span>
                   </div>
                 </Td>
+
+                {/* Items column: shows name, qty, size/custom, lining, extra */}
+                <Td className="max-w-md align-top">
+                  {Array.isArray(o.orderItems) && o.orderItems.length ? (
+                    <ul className="space-y-2">
+                      {o.orderItems.map((it, i) => (
+                        <li key={it._id || `${it.product}-${i}`} className="text-sm">
+                          <div className="font-medium">{it.name}</div>
+                          <div className="text-xs text-gray-600">
+                            Qty: {it.quantity ?? 1}
+                            {" • "}
+                            {it.size ? `Size: ${it.size}` : ""}
+                            {it.customSize && hasCustomSize(it.customSize) ? (
+                              <>
+                                {" • "}Custom:{" "}
+                                {[
+                                  it.customSize.bust ? `bust ${it.customSize.bust}` : null,
+                                  it.customSize.waist ? `waist ${it.customSize.waist}` : null,
+                                  it.customSize.hips ? `hips ${it.customSize.hips}` : null,
+                                  it.customSize.shoulder ? `shoulder ${it.customSize.shoulder}` : null,
+                                ].filter(Boolean).join(", ")}
+                              </>
+                            ) : null}
+                            {it.lining ? ` • Lining: ${it.lining}` : ""}
+                            {it.extra ? ` • Surcharge: ₹${it.extra}` : ""}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="text-gray-500">No items</span>
+                  )}
+                </Td>
+
+                {/* Shipping address column */}
+                <Td className="align-top">
+                  {o.shippingAddress && (o.shippingAddress.address || o.shippingAddress.city || o.shippingAddress.postalCode || o.shippingAddress.country) ? (
+                    <div className="text-sm">
+                      {o.shippingAddress.address && <div>{o.shippingAddress.address}</div>}
+                      <div>
+                        {(o.shippingAddress.city ? o.shippingAddress.city + ", " : "")}
+                        {(o.shippingAddress.postalCode ? o.shippingAddress.postalCode + ", " : "")}
+                        {(o.shippingAddress.country ? o.shippingAddress.country : "")}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-gray-500">-</span>
+                  )}
+                </Td>
+
                 <Td>₹{Number(o.totalPrice ?? o.itemsPrice ?? 0)}</Td>
-                <Td>{o.paymentMethod?.toUpperCase?.() || "-"}</Td>
+                <Td>{(o.paymentMethod || "-").toString().toUpperCase()}</Td>
                 <Td>
                   <Badge
                     color={
@@ -133,10 +197,8 @@ const mark = async (id, action) => {
                     {o.paymentStatus || o.status || "pending"}
                   </Badge>
                 </Td>
-                <Td className="font-mono text-xs">
-                  {o.upi?.txnId || "-"}
-                </Td>
-                <Td>{new Date(o.createdAt).toLocaleString()}</Td>
+                <Td className="font-mono text-xs">{o.upi?.txnId || "-"}</Td>
+                <Td>{o.createdAt ? new Date(o.createdAt).toLocaleString() : "-"}</Td>
                 <Td>
                   <div className="flex gap-2">
                     <button
@@ -159,9 +221,10 @@ const mark = async (id, action) => {
                 </Td>
               </tr>
             ))}
+
             {orders.length === 0 && (
               <tr>
-                <Td colSpan={9} className="text-center text-gray-500 py-6">
+                <Td colSpan={11} className="text-center text-gray-500 py-6">
                   No orders found.
                 </Td>
               </tr>
@@ -173,8 +236,9 @@ const mark = async (id, action) => {
   );
 }
 
+/* helpers */
 function Th({ children }) {
-  return <th className="px-3 py-2 font-semibold">{children}</th>;
+  return <th className="px-3 py-2 font-semibold align-top">{children}</th>;
 }
 function Td({ children, className = "", colSpan }) {
   return (
@@ -196,3 +260,13 @@ function Badge({ children, color = "gray" }) {
     </span>
   );
 }
+function hasCustomSize(cs) {
+  if (!cs) return false;
+  return Boolean(
+    (cs.bust && String(cs.bust).trim()) ||
+      (cs.waist && String(cs.waist).trim()) ||
+      (cs.hips && String(cs.hips).trim()) ||
+      (cs.shoulder && String(cs.shoulder).trim())
+  );
+}
+0
