@@ -1,3 +1,4 @@
+// src/context/CartContext.jsx
 "use client";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
@@ -6,7 +7,7 @@ export const useCart = () => useContext(CartContext);
 
 const STORAGE_KEY = "cart_items_v2";
 
-// --- Server/client shared surcharge rule (keep in sync with backend)
+// surcharge rule (server/client)
 const SURCHARGE_FOR_XL_AND_ABOVE = 200;
 const XL_THRESHOLDS = { bust: 40, waist: 33, hips: 43, shoulder: 15 };
 
@@ -42,7 +43,6 @@ function computeSurchargeForSize(size, customSize = null) {
   if (customSize && isLargeByCustomMeasurements(customSize)) return SURCHARGE_FOR_XL_AND_ABOVE;
   return isLargeSizeLabel(size) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
 }
-// -----------------------------------------------------------
 
 function loadRaw() {
   try {
@@ -54,7 +54,6 @@ function loadRaw() {
   }
 }
 
-// When loading, migrate items that are missing/incorrect extra
 function migrateLoadedItems(items = []) {
   return items.map((it) => {
     try {
@@ -88,7 +87,6 @@ function save(items) {
   }
 }
 
-// Helper: build a stable key per line item (product + size + custom signature + extra + lining)
 export const lineKey = (product, size, customSize, extra = 0, lining = null) =>
   `${product}__${size || "NOSIZE"}__${customSize ? JSON.stringify(customSize) : "NOCUST"}__${Number(extra || 0)}__${lining || "NO_LIN"}`;
 
@@ -105,7 +103,6 @@ export function CartProvider({ children }) {
     save(items);
   }, [items]);
 
-  // helper to compare customSize objects (both null/undefined considered equal)
   function sameCustom(a, b) {
     if (!a && !b) return true;
     try {
@@ -123,34 +120,37 @@ export function CartProvider({ children }) {
     size = null,
     qty = 1,
     customSize = null,
-    extra = null, // allow null to mean "not provided"
-    lining = null, // "with" or "without" or null
+    extra = null,
+    lining = null,
   }) => {
     if (!product) return;
 
-    const productId = typeof product === "object" ? product._id : product;
+    // product ID can be object or id
+    const productId = typeof product === "object" ? (product._id || product.id || product) : product;
 
     setItems((prev) => {
       const next = [...prev];
 
-      // If caller provided a positive extra, use it; otherwise compute from size/customSize
-      const parsedExtra =
-        typeof extra === "number" && extra > 0
-          ? Number(extra)
-          : computeSurchargeForSize(size, customSize);
+      // if caller didn't pass size but product object contains a default/selected, use it
+      let parsedSize = size || null;
+      if (!parsedSize && product && typeof product === "object") {
+        parsedSize = product.selectedSize || product.size || product.defaultSize || null;
+      }
 
-      // find an existing item that matches product, size, customSize, extra and lining
+      // compute extra if caller didn't pass
+      const parsedExtra =
+        typeof extra === "number" && extra > 0 ? Number(extra) : computeSurchargeForSize(parsedSize, customSize);
+
       const idx = next.findIndex(
         (it) =>
-          it.product === productId &&
-          (it.size || null) === (size || null) &&
+          (String(it.product) === String(productId)) &&
+          (it.size || null) === (parsedSize || null) &&
           sameCustom(it.customSize, customSize) &&
-          Number(it.extra || 0) === parsedExtra &&
+          Number(it.extra || 0) === Number(parsedExtra || 0) &&
           (it.lining || null) === (lining || null)
       );
 
       if (idx >= 0) {
-        // merge by increasing qty
         next[idx] = { ...next[idx], qty: (next[idx].qty || 1) + (Number(qty) || 1) };
       } else {
         next.push({
@@ -158,23 +158,23 @@ export function CartProvider({ children }) {
           name,
           price: Number(price || 0),
           image,
-          size: size || null,
+          size: parsedSize || null,
           qty: Number(qty) || 1,
           customSize: customSize || null,
           extra: Number(parsedExtra || 0),
           lining: lining || null,
         });
       }
+
       return next;
     });
   };
 
-  // Set quantity per product + size (+ optional customSize + optional extra + lining)
   const setQty = (product, size, qty, customSize = null, extra = null, lining = null) => {
-    const productId = typeof product === "object" ? product._id : product;
+    const productId = typeof product === "object" ? (product._id || product.id || product) : product;
     setItems((prev) =>
       prev.map((it) =>
-        it.product === productId &&
+        (String(it.product) === String(productId)) &&
         (it.size || null) === (size || null) &&
         (customSize ? sameCustom(it.customSize, customSize) : true) &&
         (extra !== null ? Number(it.extra || 0) === Number(extra || 0) : true) &&
@@ -186,13 +186,12 @@ export function CartProvider({ children }) {
   };
 
   const removeItem = (product, size = null, customSize = null, extra = null, lining = null) => {
-    const productId = typeof product === "object" ? product._id : product;
-
+    const productId = typeof product === "object" ? (product._id || product.id || product) : product;
     setItems((prev) =>
       prev.filter(
         (it) =>
           !(
-            it.product === productId &&
+            (String(it.product) === String(productId)) &&
             (it.size || null) === (size || null) &&
             (customSize ? sameCustom(it.customSize, customSize) : true) &&
             (extra !== null ? Number(it.extra || 0) === Number(extra || 0) : true) &&
@@ -204,7 +203,6 @@ export function CartProvider({ children }) {
 
   const clear = () => setItems([]);
 
-  // Totals: include extra per-line in itemsPrice
   const itemsPrice = useMemo(
     () =>
       items.reduce(
@@ -238,3 +236,4 @@ export function CartProvider({ children }) {
     </CartContext.Provider>
   );
 }
+export default CartContext;

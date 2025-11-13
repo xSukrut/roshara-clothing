@@ -1,4 +1,4 @@
-// orderController.js
+// controllers/orderController.js
 import asyncHandler from "express-async-handler";
 import Order from "../models/orderModel.js";
 import Product from "../models/productModel.js";
@@ -37,6 +37,106 @@ function isLargeByCustomMeasurements(custom = {}) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Extract a size value from a potentially messy orderItem object.
+ * Looks into several common aliases and into a nested product object (if present).
+ * Returns null if nothing found.
+ */
+function extractSizeFromItem(item) {
+  if (!item || typeof item !== "object") return null;
+
+  // Candidate keys to check (expandable)
+  const candidates = [
+    "size",
+    "selectedSize",
+    "selected_size",
+    "selected",
+    "sizeLabel",
+    "selectedSizeLabel",
+    "chosenSize",
+    "size_label",
+    "sizeName",
+    "selectedSizeValue",
+    "variant",
+  ];
+
+  for (const key of candidates) {
+    if (Object.prototype.hasOwnProperty.call(item, key)) {
+      const v = item[key];
+      if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
+    }
+  }
+
+  // If product subdocument was included with a chosen size
+  if (item.product && typeof item.product === "object") {
+    const p = item.product;
+    const pCandidates = ["selectedSize", "size", "defaultSize", "sizeLabel"];
+    for (const k of pCandidates) {
+      if (Object.prototype.hasOwnProperty.call(p, k)) {
+        const v = p[k];
+        if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Normalize and extract customSize object if present under multiple aliases.
+ * Returns a normalized object { bust, waist, hips, shoulder } or null.
+ */
+function extractCustomSizeObject(item) {
+  if (!item || typeof item !== "object") return null;
+
+  const aliases = ["customSize", "custom", "measurements", "customMeasurements", "custom_size", "measurement"];
+  let cand = null;
+  for (const a of aliases) {
+    if (Object.prototype.hasOwnProperty.call(item, a) && item[a] != null) {
+      cand = item[a];
+      break;
+    }
+  }
+
+  if (!cand && item.product && typeof item.product === "object") {
+    // sometimes frontend sent full product-with-chosen-measurements
+    for (const a of aliases) {
+      if (Object.prototype.hasOwnProperty.call(item.product, a) && item.product[a] != null) {
+        cand = item.product[a];
+        break;
+      }
+    }
+  }
+
+  if (!cand) return null;
+
+  let obj = cand;
+  if (typeof cand === "string") {
+    // try parse JSON-ish string or "bust:36,waist:28"
+    try {
+      obj = JSON.parse(cand);
+    } catch {
+      const kv = {};
+      cand.split(",").forEach((p) => {
+        const [k, v] = p.split(":").map((s) => (s ? s.trim() : ""));
+        if (k && v) kv[k] = v;
+      });
+      if (Object.keys(kv).length) obj = kv;
+    }
+  }
+
+  const out = {
+    bust: obj?.bust ? String(obj.bust).trim() : undefined,
+    waist: obj?.waist ? String(obj.waist).trim() : undefined,
+    hips: obj?.hips ? String(obj.hips).trim() : undefined,
+    shoulder: obj?.shoulder ? String(obj.shoulder).trim() : undefined,
+  };
+
+  // return null if completely empty
+  if (!out.bust && !out.waist && !out.hips && !out.shoulder) return null;
+  return out;
 }
 
 export const createOrder = asyncHandler(async (req, res) => {
@@ -80,21 +180,33 @@ export const createOrder = asyncHandler(async (req, res) => {
       }
 
       const qty = Number(item.quantity || 1);
-      const size = item.size || null;
-      const customSize = item.customSize || null;
 
-      const extra = isLargeSizeLabel(size) || isLargeByCustomMeasurements(customSize) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
+      // === Robust size extraction: prefer explicit size, else check aliases, else keep null ===
+      const extractedSize = extractSizeFromItem(item);
+      const customSizeFromItem = extractCustomSizeObject(item);
 
+      // if frontend sent custom measurements fields (e.g., in different key), prefer normalized custom
+      const customSize = customSizeFromItem || null;
+
+      // determine extra (surcharge)
+      const extra = isLargeSizeLabel(extractedSize) || isLargeByCustomMeasurements(customSize) ? SURCHARGE_FOR_XL_AND_ABOVE : 0;
+
+      // unit price: apply lining choice only if product supports it
       let unitPrice = Number(prod.price);
       if (prod.hasLiningOption && String(item.lining || "").toLowerCase() === "with") {
         const lp = Number(prod.liningPrice);
         if (Number.isFinite(lp) && lp > 0) unitPrice = lp;
       }
 
+      // hydrate fields for storage (server-side authoritative)
       item.name = prod.name;
       item.price = Number(unitPrice);
       item.extra = Number(extra);
       item.lining = prod.hasLiningOption ? (String(item.lining || "").toLowerCase() === "with" ? "with" : "without") : null;
+
+      // ensure size and image are stored (normalize)
+      item.size = extractedSize || null;
+      item.image = (prod.images && prod.images.length ? prod.images[0] : (prod.image || item.image || "")) || "";
 
       if (customSize) {
         item.customSize = {
@@ -166,6 +278,7 @@ export const createOrder = asyncHandler(async (req, res) => {
       upi: {},
       couponCode: coupon ? coupon.code : null,
       codFee: codFee,
+      isPaid: false,
     });
 
     const created = await order.save();
@@ -296,10 +409,10 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     order.paymentStatus = status;
 
     if (status === "paid") {
-      order.paid = true;
+      order.isPaid = true;
       order.paidAt = new Date();
     } else {
-      order.paid = false;
+      order.isPaid = false;
       order.paidAt = null;
     }
 

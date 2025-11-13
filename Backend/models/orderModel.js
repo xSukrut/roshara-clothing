@@ -1,3 +1,4 @@
+// backend: models/orderModel.js
 import mongoose from "mongoose";
 
 const customSizeSchema = new mongoose.Schema(
@@ -6,6 +7,7 @@ const customSizeSchema = new mongoose.Schema(
     waist: { type: String },
     hips: { type: String },
     shoulder: { type: String },
+    label: { type: String }, // optional label if some clients stored a label here
   },
   { _id: false }
 );
@@ -13,9 +15,11 @@ const customSizeSchema = new mongoose.Schema(
 const orderItemSchema = new mongoose.Schema({
   product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
   name: { type: String, required: true },
+  image: { type: String },
+  size: { type: String, default: null },
   quantity: { type: Number, required: true },
-  price: { type: Number, required: true }, // price per unit at time of order
-  extra: { type: Number, default: 0 }, // surcharge per unit (e.g. XL fee)
+  price: { type: Number, required: true },
+  extra: { type: Number, default: 0 },
   customSize: { type: customSizeSchema, default: null },
   lining: { type: String, enum: ["with", "without", null], default: null },
 });
@@ -40,8 +44,8 @@ const orderSchema = new mongoose.Schema(
       postalCode: String,
       country: String,
     },
-    codFee: { type: Number, default: 0},
-    paymentMethod: { type: String, required: true }, // "upi", "cod", etc.
+    codFee: { type: Number, default: 0 },
+    paymentMethod: { type: String, required: true },
     paymentResult: {
       id: String,
       status: String,
@@ -54,7 +58,6 @@ const orderSchema = new mongoose.Schema(
     discountAmount: { type: Number, default: 0 },
     totalPrice: { type: Number, default: 0 },
 
-    // NEW: keep main status + payment status in sync
     status: {
       type: String,
       enum: ["pending", "pending_verification", "paid", "shipped", "cancelled", "rejected"],
@@ -69,12 +72,12 @@ const orderSchema = new mongoose.Schema(
     upi: upiSchema,
     adminNote: String,
 
+    isPaid: { type: Boolean, default: false },
     paidAt: Date,
     shippedAt: Date,
   },
   { timestamps: true }
 );
 
-// Prevent OverwriteModelError when using hot-reload / nodemon
 const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
 export default Order;

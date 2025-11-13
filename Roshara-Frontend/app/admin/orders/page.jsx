@@ -1,4 +1,3 @@
-// app/admin/orders/page.jsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,6 +8,97 @@ import {
   adminUpdateOrderStatus,
 } from "../../../services/orderService";
 
+/* Robust extractor helpers (keeps many alias names in mind) */
+function extractSize(it) {
+  if (!it) return null;
+  // check common keys in the orderItem object
+  const keys = [
+    "size",
+    "selectedSize",
+    "selected_size",
+    "selected",
+    "sizeLabel",
+    "selectedSizeLabel",
+    "chosenSize",
+    "size_label",
+    "sizeName",
+    "selectedSizeValue",
+    "variant",
+  ];
+  for (const k of keys) {
+    if (Object.prototype.hasOwnProperty.call(it, k)) {
+      const v = it[k];
+      if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
+    }
+  }
+  // fallback into product subdocument (sometimes frontend nested chosen size there)
+  if (it.product && typeof it.product === "object") {
+    const pkeys = ["selectedSize", "size", "defaultSize", "sizeLabel", "variant"];
+    for (const pk of pkeys) {
+      if (Object.prototype.hasOwnProperty.call(it.product, pk)) {
+        const v = it.product[pk];
+        if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
+      }
+    }
+  }
+  return null;
+}
+
+function extractCustomSize(it) {
+  if (!it) return null;
+  const aliases = ["customSize", "custom", "measurements", "customMeasurements", "custom_size", "measurement"];
+  let cand = null;
+  for (const a of aliases) {
+    if (Object.prototype.hasOwnProperty.call(it, a) && it[a] != null) {
+      cand = it[a];
+      break;
+    }
+  }
+  // fallback to product subdoc
+  if (!cand && it.product && typeof it.product === "object") {
+    for (const a of aliases) {
+      if (Object.prototype.hasOwnProperty.call(it.product, a) && it.product[a] != null) {
+        cand = it.product[a];
+        break;
+      }
+    }
+  }
+  if (!cand) return null;
+  let obj = cand;
+  if (typeof cand === "string") {
+    try {
+      obj = JSON.parse(cand);
+    } catch {
+      // try to parse a simple `bust:36,waist:28` string
+      const kv = {};
+      cand.split(",").forEach((p) => {
+        const [k, v] = p.split(":").map(s => (s ? s.trim() : ""));
+        if (k && v) kv[k] = v;
+      });
+      if (Object.keys(kv).length) obj = kv;
+    }
+  }
+  const out = {
+    bust: obj?.bust ? String(obj.bust).trim() : undefined,
+    waist: obj?.waist ? String(obj.waist).trim() : undefined,
+    hips: obj?.hips ? String(obj.hips).trim() : undefined,
+    shoulder: obj?.shoulder ? String(obj.shoulder).trim() : undefined,
+  };
+  // if completely empty => null
+  if (!out.bust && !out.waist && !out.hips && !out.shoulder) return null;
+  return out;
+}
+
+function customSizeSummary(cs) {
+  if (!cs) return null;
+  const parts = [];
+  if (cs.bust) parts.push(`bust ${cs.bust}`);
+  if (cs.waist) parts.push(`waist ${cs.waist}`);
+  if (cs.hips) parts.push(`hips ${cs.hips}`);
+  if (cs.shoulder) parts.push(`shoulder ${cs.shoulder}`);
+  return parts.length ? parts.join(", ") : null;
+}
+
 export default function AdminOrdersPage() {
   const router = useRouter();
   const { user, token, loading } = useAuth();
@@ -18,6 +108,7 @@ export default function AdminOrdersPage() {
   const [status, setStatus] = useState(""); // "", pending_verification, paid, rejected
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
+  const [expanded, setExpanded] = useState({}); // map orderId => bool for raw JSON expand
 
   // guard: only admin
   useEffect(() => {
@@ -137,33 +228,42 @@ export default function AdminOrdersPage() {
                 <Td className="max-w-md align-top">
                   {Array.isArray(o.orderItems) && o.orderItems.length ? (
                     <ul className="space-y-2">
-                      {o.orderItems.map((it, i) => (
-                        <li key={it._id || `${it.product}-${i}`} className="text-sm">
-                          <div className="font-medium">{it.name}</div>
-                          <div className="text-xs text-gray-600">
-                            Qty: {it.quantity ?? 1}
-                            {" • "}
-                            {it.size ? `Size: ${it.size}` : ""}
-                            {it.customSize && hasCustomSize(it.customSize) ? (
-                              <>
-                                {" • "}Custom:{" "}
-                                {[
-                                  it.customSize.bust ? `bust ${it.customSize.bust}` : null,
-                                  it.customSize.waist ? `waist ${it.customSize.waist}` : null,
-                                  it.customSize.hips ? `hips ${it.customSize.hips}` : null,
-                                  it.customSize.shoulder ? `shoulder ${it.customSize.shoulder}` : null,
-                                ].filter(Boolean).join(", ")}
-                              </>
-                            ) : null}
-                            {it.lining ? ` • Lining: ${it.lining}` : ""}
-                            {it.extra ? ` • Surcharge: ₹${it.extra}` : ""}
-                          </div>
-                        </li>
-                      ))}
+                      {o.orderItems.map((it, i) => {
+                        const size = extractSize(it);
+                        const cs = extractCustomSize(it);
+                        const csSummary = customSizeSummary(cs);
+                        return (
+                          <li key={it._id || `${it.product}-${i}`} className="text-sm">
+                            <div className="font-medium">{it.name}</div>
+                            <div className="text-xs text-gray-600">
+                              Qty: {it.quantity ?? it.qty ?? 1}
+                              {" • "}
+                              Size: {size ? size : (csSummary ? `(custom)` : <span className="text-gray-400">(not detected)</span>)}
+                              {csSummary ? ` • Custom: ${csSummary}` : ""}
+                              {it.lining ? ` • Lining: ${it.lining}` : ""}
+                              {it.extra ? ` • Surcharge: ₹${it.extra}` : ""}
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   ) : (
                     <span className="text-gray-500">No items</span>
                   )}
+                  {/* Raw JSON toggle */}
+                  <div className="mt-2">
+                    <button
+                      onClick={() => setExpanded((prev) => ({ ...prev, [o._id]: !prev[o._id] }))}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      {expanded[o._id] ? "Hide raw JSON" : "Expand raw JSON"}
+                    </button>
+                    {expanded[o._id] && (
+                      <pre className="bg-gray-100 p-2 rounded mt-2 text-xs overflow-auto max-h-44">
+                        {JSON.stringify(o.orderItems, null, 2)}
+                      </pre>
+                    )}
+                  </div>
                 </Td>
 
                 {/* Shipping address column */}
@@ -260,13 +360,3 @@ function Badge({ children, color = "gray" }) {
     </span>
   );
 }
-function hasCustomSize(cs) {
-  if (!cs) return false;
-  return Boolean(
-    (cs.bust && String(cs.bust).trim()) ||
-      (cs.waist && String(cs.waist).trim()) ||
-      (cs.hips && String(cs.hips).trim()) ||
-      (cs.shoulder && String(cs.shoulder).trim())
-  );
-}
-0

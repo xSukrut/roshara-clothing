@@ -89,15 +89,22 @@ export default function CheckoutPage() {
 
     setPlacing(true);
     try {
-      const orderItems = items.map((it) => ({
-        product: getPid(it),
-        name: it.name,
-        quantity: it.qty ?? it.quantity ?? 1,
-        price: it.price,
-        size: it.size,
-        customSize: it.customSize || null,
-        extra: Number(it.extra || 0), // send surcharge per unit
-      }));
+      const orderItems = items.map((it) => {
+        // For safety include multiple size aliases so backend can read whichever it expects
+        return {
+          product: getPid(it),
+          name: it.name,
+          quantity: it.qty ?? it.quantity ?? 1,
+          price: it.price,
+          size: it.size ?? null,
+          selectedSize: it.size ?? null,
+          selected: it.size ?? null,
+          customSize: it.customSize || null,
+          custom: it.customSize || null,
+          extra: Number(it.extra || 0),
+          lining: it.lining || null,
+        };
+      });
 
       const payload = {
         orderItems,
@@ -107,6 +114,9 @@ export default function CheckoutPage() {
         shippingPrice: 0,
         couponCode: couponInput ? couponInput.trim().toUpperCase() : null,
       };
+
+      // debug: remove if noisy
+      console.info("Checkout payload sample:", JSON.stringify(orderItems.slice(0, 5), null, 2));
 
       const order = await createOrder(token, payload);
 
@@ -144,7 +154,6 @@ export default function CheckoutPage() {
   if (loading) return <div className="p-6">Loading…</div>;
   if (!user) return null;
 
-  // total extra for display
   const totalExtra = items.reduce((s, it) => s + (Number(it.extra || 0) * (it.qty || 1)), 0);
 
   return (
@@ -158,19 +167,20 @@ export default function CheckoutPage() {
           <div className="space-y-4">
             {items.map((it) => (
               <div
-  key={`${it.product}-${it.size || "NOSIZE"}-${it.qty || 1}-${it.extra || 0}-${JSON.stringify(it.customSize || {})}`}
-  className="border rounded p-4 flex gap-4"
->
+                key={`${it.product}-${it.size || "NOSIZE"}-${it.qty || 1}-${it.extra || 0}-${JSON.stringify(it.customSize || {})}`}
+                className="border rounded p-4 flex gap-4"
+              >
                 <img src={it.image || "/placeholder.png"} alt={it.name} className="w-20 h-20 object-cover rounded" />
                 <div className="flex-1">
                   <div className="font-medium">{it.name}</div>
                   <div className="text-sm text-gray-600">₹{it.price}</div>
                   {it.extra && Number(it.extra) > 0 && <div className="text-sm text-gray-600">Surcharge: ₹{it.extra}</div>}
                   {it.size && <div className="text-sm text-gray-600">Size: {it.size}</div>}
+                  {it.customSize && <div className="text-sm text-gray-600">Custom: {JSON.stringify(it.customSize)}</div>}
                   <div className="mt-2 flex items-center gap-2">
                     <label className="text-sm">Qty</label>
                     <input type="number" min="1" value={it.qty} onChange={(e) => setQty(getPid(it), Number(e.target.value))} className="w-16 border rounded px-2 py-1" />
-                    <button onClick={() => removeItem(getPid(it))} className="text-red-600 text-sm ml-3">Remove</button>
+                    <button onClick={() => removeItem(getPid(it), it.size, it.customSize, it.extra, it.lining)} className="text-red-600 text-sm ml-3">Remove</button>
                   </div>
                 </div>
               </div>
@@ -178,7 +188,7 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        {/* Address, Payment, Coupons (unchanged) */}
+        {/* Address/Payment/Coupons UI (unchanged) */}
         <div className="mt-8">
           <h3 className="font-semibold mb-2">Delivery Address</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -273,4 +283,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-

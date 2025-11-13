@@ -6,13 +6,7 @@ const auth = (token) => ({
   headers: token ? { Authorization: `Bearer ${token}` } : {},
 });
 
-/**
- * Admin: list orders (tries the likely admin endpoints in priority order)
- * - Preferred: GET /orders/admin (matches your backend router)
- * - Fallback: GET /admin/orders (kept as fallback for older code)
- *
- * Accepts { q, status } in params.
- */
+
 export const listOrdersAdmin = async (token, { q = "", status = "" } = {}) => {
   const params = { q, status };
 
