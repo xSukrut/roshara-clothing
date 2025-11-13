@@ -35,7 +35,7 @@ export default function ShopByCollections({ limit = 4 }) {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-3xl font-bold text-[#2a1b1b]">
-            Shop by Collection
+            Shop by Collections
           </h2>
           <p className="text-gray-600 max-w-xl mt-2">
             Browse our curated collections — click a collection to see its
