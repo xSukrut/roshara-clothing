@@ -34,9 +34,12 @@ export default function ShopByCollections({ limit = 4 }) {
     <section className="max-w-7xl mx-auto px-6 py-12">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-3xl font-bold text-[#2a1b1b]">Shop by Collections</h2>
+          <h2 className="text-3xl font-bold text-[#2a1b1b]">
+            Shop by Collection
+          </h2>
           <p className="text-gray-600 max-w-xl mt-2">
-            Browse our curated collections — click a collection to see its products.
+            Browse our curated collections — click a collection to see its
+            products.
           </p>
         </div>
 
@@ -53,7 +56,10 @@ export default function ShopByCollections({ limit = 4 }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {loading ? (
           Array.from({ length: limit }).map((_, i) => (
-            <div key={i} className="h-56 bg-gray-50 rounded-2xl animate-pulse" />
+            <div
+              key={i}
+              className="h-56 bg-gray-50 rounded-2xl animate-pulse"
+            />
           ))
         ) : collections.length === 0 ? (
           <p className="text-gray-500">No collections yet.</p>
