@@ -7,8 +7,11 @@ import { useCart } from "@context/CartContext";
 import Image from "next/image";
 import Link from "next/link";
 import { getAllProducts } from "@services/productService";
+import ProductDetails from "../components/ProductDetails";
 
-const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || "https://roshara-clothing.onrender.com/api")
+const API_ORIGIN = (
+  process.env.NEXT_PUBLIC_API_URL || "https://roshara-clothing.onrender.com/api"
+)
   .replace(/\/+$/, "")
   .replace(/\/api$/, "");
 
@@ -40,6 +43,9 @@ export default function CartPage() {
     addItem,
     openMiniCart,
   } = useCart();
+
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [recommendations, setRecommendations] = useState([]);
   const [recError, setRecError] = useState("");
@@ -110,8 +116,12 @@ export default function CartPage() {
               const img = urlFor(it.image);
 
               // Key includes product + size + customSize + extra so React keeps lines unique
-              const customKey = it.customSize ? JSON.stringify(it.customSize) : "";
-              const key = `${it.product}-${it.size || "NOSIZE"}-${customKey}-${Number(it.extra || 0)}`;
+              const customKey = it.customSize
+                ? JSON.stringify(it.customSize)
+                : "";
+              const key = `${it.product}-${
+                it.size || "NOSIZE"
+              }-${customKey}-${Number(it.extra || 0)}`;
 
               const unitPrice = Number(it.price || 0);
               const extra = Number(it.extra || 0);
@@ -125,7 +135,14 @@ export default function CartPage() {
                 >
                   {/* Remove */}
                   <button
-                    onClick={() => removeItem(it.product, it.size, it.customSize || null, it.extra || 0)}
+                    onClick={() =>
+                      removeItem(
+                        it.product,
+                        it.size,
+                        it.customSize || null,
+                        it.extra || 0
+                      )
+                    }
                     className="absolute top-2 right-3 text-gray-400 hover:text-red-600 text-lg transition-colors"
                     aria-label="Remove from cart"
                   >
@@ -152,12 +169,22 @@ export default function CartPage() {
                       {/* Show custom measurements if present, else show size */}
                       {it.customSize ? (
                         <div className="text-sm text-gray-700 mt-1">
-                          <div className="font-medium">Custom measurements:</div>
+                          <div className="font-medium">
+                            Custom measurements:
+                          </div>
                           <div className="mt-1 text-gray-600 text-sm">
-                            {it.customSize.bust ? `Bust: ${it.customSize.bust}"` : null}
-                            {it.customSize.waist ? `  • Waist: ${it.customSize.waist}"` : null}
-                            {it.customSize.hips ? `  • Hips: ${it.customSize.hips}"` : null}
-                            {it.customSize.shoulder ? `  • Shoulder: ${it.customSize.shoulder}"` : null}
+                            {it.customSize.bust
+                              ? `Bust: ${it.customSize.bust}"`
+                              : null}
+                            {it.customSize.waist
+                              ? `  • Waist: ${it.customSize.waist}"`
+                              : null}
+                            {it.customSize.hips
+                              ? `  • Hips: ${it.customSize.hips}"`
+                              : null}
+                            {it.customSize.shoulder
+                              ? `  • Shoulder: ${it.customSize.shoulder}"`
+                              : null}
                           </div>
                         </div>
                       ) : it.size ? (
@@ -167,7 +194,9 @@ export default function CartPage() {
                       ) : null}
 
                       {extra > 0 && (
-                        <div className="text-sm text-amber-800 mt-2">+₹{extra} size surcharge</div>
+                        <div className="text-sm text-amber-800 mt-2">
+                          +₹{extra} size surcharge
+                        </div>
                       )}
 
                       <div className="mt-2 inline-flex items-center gap-2">
@@ -175,7 +204,13 @@ export default function CartPage() {
                         <div className="flex items-center bg-white border border-gray-300 rounded-full shadow-sm overflow-hidden">
                           <button
                             onClick={() =>
-                              setQty(it.product, it.size, Math.max((it.qty || 1) - 1, 1), it.customSize || null, it.extra || 0)
+                              setQty(
+                                it.product,
+                                it.size,
+                                Math.max((it.qty || 1) - 1, 1),
+                                it.customSize || null,
+                                it.extra || 0
+                              )
                             }
                             className="w-8 h-8 grid place-items-center hover:bg-gray-100"
                             aria-label="Decrease quantity"
@@ -186,7 +221,15 @@ export default function CartPage() {
                             {it.qty}
                           </span>
                           <button
-                            onClick={() => setQty(it.product, it.size, (it.qty || 1) + 1, it.customSize || null, it.extra || 0)}
+                            onClick={() =>
+                              setQty(
+                                it.product,
+                                it.size,
+                                (it.qty || 1) + 1,
+                                it.customSize || null,
+                                it.extra || 0
+                              )
+                            }
                             className="w-8 h-8 grid place-items-center hover:bg-gray-100"
                             aria-label="Increase quantity"
                           >
@@ -199,8 +242,14 @@ export default function CartPage() {
 
                   {/* Price */}
                   <div className="ml-auto sm:ml-0 text-right">
-                    <div className="text-sm text-gray-500">Unit: ₹{unitPrice}</div>
-                    {extra > 0 && <div className="text-sm text-amber-800">Surcharge: ₹{extra}</div>}
+                    <div className="text-sm text-gray-500">
+                      Unit: ₹{unitPrice}
+                    </div>
+                    {extra > 0 && (
+                      <div className="text-sm text-amber-800">
+                        Surcharge: ₹{extra}
+                      </div>
+                    )}
                     <div className="text-xl font-semibold text-amber-900 mt-1">
                       ₹{lineTotal}
                     </div>
@@ -220,7 +269,10 @@ export default function CartPage() {
 
         <div className="space-y-3 text-gray-700">
           <Row label="Subtotal" value={`₹${itemsPrice}`} />
-          <Row label="Shipping" value={shippingPrice ? `₹${shippingPrice}` : "FREE"} />
+          <Row
+            label="Shipping"
+            value={shippingPrice ? `₹${shippingPrice}` : "FREE"}
+          />
           <Row label="Tax" value={`₹${taxPrice}`} />
         </div>
 
@@ -247,15 +299,25 @@ export default function CartPage() {
         </Link>
       </aside>
 
-      <div className="md:col-span-3 max-w-6xl mx-auto mt-12 p-6 bg-gradient-to-b from-white to-[#FFFDF9] rounded-2xl shadow-sm">
+      <div className="md:col-span-3 w-full max-w-6xl mx-auto mt-12 p-6 bg-gradient-to-b from-white to-[#FFFDF9] rounded-2xl shadow-sm">
         <h2 className="text-2xl md:text-3xl font-extrabold mb-6 text-[#44120F] text-center">
           You might also like
         </h2>
 
         {recommendations?.length ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5 md:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4  md:gap-6">
             {recommendations.map((p) => (
-              <RecommendationCard key={p._id} product={p} onAdd={addRecToCart} />
+              <div key={p._id} className="w-full">
+                <RecommendationCard
+                  product={p}
+                  onAdd={addRecToCart}
+                  onView={() => {
+                    setSelectedProduct(p);
+                    setShowProductModal(true);
+                  }}
+                  className="rec-card"
+                />
+              </div>
             ))}
           </div>
         ) : (
@@ -273,6 +335,16 @@ export default function CartPage() {
           </Link>
         </div>
       </div>
+      {showProductModal && selectedProduct && (
+        <ProductDetails
+          product={selectedProduct}
+          onClose={() => setShowProductModal(false)}
+          onAddToCart={(item) => {
+            addItem(item);
+            openMiniCart?.();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -286,38 +358,40 @@ function Row({ label, value }) {
   );
 }
 
-function RecommendationCard({ product, onAdd }) {
+function RecommendationCard({ product, onAdd, onView }) {
   const first = product.images?.[0] || product.image || "/placeholder.png";
   const img = urlFor(first);
 
   return (
-    <div className="group border border-gray-100 rounded-2xl bg-white shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-      <div className="relative w-full aspect-[2/3] overflow-hidden">
-        <Image
-          src={img}
-          alt={product.name}
-          fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-        />
-      </div>
-      
-      <div className="p-5 flex flex-col items-center text-center">
-        <h3 className="text-lg font-semibold text-gray-900 leading-snug line-clamp-1">
-          {product.name}
-        </h3>
+    <div className="group border border-gray-100 rounded-2xl bg-white shadow-md overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 h-[295px] sm:h-[300px] md:h-[480px] flex flex-col">
+      <div onClick={onView} className="cursor-pointer">
+        <div className="relative w-full aspect-[2/3] overflow-hidden">
+          <Image
+            src={img}
+            alt={product.name}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+          />
+        </div>
 
-        <p className="text-base font-semibold text-amber-800 mt-1">
-          ₹{product.price}
-        </p>
+        <div className="p-2 md:p-2 flex flex-col items-center text-center flex-1">
+          <h3 className="text-lg font-semibold text-gray-900 leading-snug line-clamp-1">
+            {product.name}
+          </h3>
 
-        <button
-          onClick={() => onAdd(product)}
-          className="mt-4 w-full rounded-lg bg-[#44120F] text-white py-3 text-sm font-medium transition-all duration-200 hover:bg-black hover:shadow-md active:scale-[0.98]"
-        >
-          Add to Bag
-        </button>
+          <p className="text-base font-semibold text-amber-800">
+            ₹{product.price}
+          </p>
+        </div>
       </div>
+
+      <button
+        onClick={() => onAdd(product)}
+        className=" lg:mt-1 sm:mt-5 w-full rounded-t-none bg-[#44120F] text-white py-3 text-sm font-medium transition-all duration-200 hover:bg-black hover:shadow-md active:scale-[0.98]"
+      >
+        Add to Bag
+      </button>
     </div>
   );
 }
