@@ -11,8 +11,9 @@ export default function Homepage() {
     <main>
       <HeroSection />
       <NewArrivals />
-      <AllCollectionsSection/>
+      <div className="bg-[#F8F5F0]">
+        <AllCollectionsSection />
+      </div>
     </main>
   );
 }
-

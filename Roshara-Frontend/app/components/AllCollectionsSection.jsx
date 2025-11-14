@@ -42,7 +42,10 @@ export default function AllCollectionsSection({ max = 3 }) {
         // only keep top `max`
         setCollections(arr.slice(0, max));
       } catch (err) {
-        console.error("Failed to load collections:", err?.response?.data || err.message || err);
+        console.error(
+          "Failed to load collections:",
+          err?.response?.data || err.message || err
+        );
         if (mounted) setCollections([]);
       } finally {
         if (mounted) setLoading(false);
@@ -52,18 +55,21 @@ export default function AllCollectionsSection({ max = 3 }) {
   }, [max]);
 
   return (
-    <section className="max-w-7xl mx-auto px-6 py-12">
+    <section className="max-w-7xl mx-auto px-6 py-12 bg-[#F8F5F0]">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-3xl md:text-4xl font-bold text-[#2a1b1b]">Shop by Collections</h2>
+          <h2 className="text-4xl md:text-4xl font-bold text-[#4A1718]">
+            Shop by Collections
+          </h2>
           <p className="text-gray-600 mt-2 max-w-xl">
-            Explore our curation of styles—designed to celebrate comfort, craft, and individuality.
+            Explore our curation of styles—designed to celebrate comfort, craft,
+            and individuality.
           </p>
         </div>
-        <div>
+        <div className="flex justify-end sm:justify-center md:justify-end mt-4">
           <a
             href="/collections"
-            className="inline-block bg-black text-white px-4 py-2 rounded hover:bg-gray-800"
+            className="inline-block bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-colors duration-200"
             aria-label="View all collections"
           >
             View All
@@ -74,16 +80,31 @@ export default function AllCollectionsSection({ max = 3 }) {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
           {Array.from({ length: max }).map((_, i) => (
-            <div key={i} className="h-56 rounded-2xl bg-gray-100 animate-pulse" />
+            <div
+              key={i}
+              className="h-56 rounded-2xl bg-gray-100 animate-pulse"
+            />
           ))}
         </div>
       ) : collections.length === 0 ? (
         <p className="text-gray-500">No collections available yet.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-          {collections.map((c) => (
-            <CollectionCard key={c._id} collection={c} />
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:h-[550px]">
+          {/* LEFT SIDE — Tall Image */}
+          {collections[0] && (
+            <div className="h-full">
+              <CollectionCard collection={collections[0]} />
+            </div>
+          )}
+
+          {/* RIGHT SIDE — Two Equal Boxes */}
+          <div className="grid grid-rows-2 gap-8 h-full">
+            {collections.slice(1, 3).map((c) => (
+              <div key={c._id} className="h-full">
+                <CollectionCard collection={c} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </section>

@@ -8,10 +8,11 @@ import { useCart } from "../../context/CartContext";
 import { useWishlist } from "../../context/WishlistContext";
 import { ROSHARA_SIZES } from "../constants/sizes";
 
-const API_BASE =
-  (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api")
-    .replace(/\/$/, "")
-    .replace(/\/api$/, "");
+const API_BASE = (
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+)
+  .replace(/\/$/, "")
+  .replace(/\/api$/, "");
 
 // surcharge for XL and above
 const EXTRA_FOR_LARGE = 200;
@@ -38,7 +39,8 @@ function urlFor(src) {
     }
     return u.href;
   } catch {
-    const path = typeof src === "string" && src.startsWith("/") ? src : `/${src}`;
+    const path =
+      typeof src === "string" && src.startsWith("/") ? src : `/${src}`;
     if (path.startsWith("/uploads")) return API_BASE + path;
     return "/placeholder.png";
   }
@@ -94,7 +96,10 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   useEffect(() => {
     let t;
     if (hovering && images.length > 1) {
-      t = setInterval(() => setCurrentImage((p) => (p + 1) % images.length), 600);
+      t = setInterval(
+        () => setCurrentImage((p) => (p + 1) % images.length),
+        600
+      );
     }
     return () => clearInterval(t);
   }, [hovering, images.length]);
@@ -124,7 +129,11 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
     (e) => {
       if (!showQuickAdd) return;
       const node = quickAddRef.current;
-      if (node && !node.contains(e.target) && !wrapperRef.current?.contains(e.target)) {
+      if (
+        node &&
+        !node.contains(e.target) &&
+        !wrapperRef.current?.contains(e.target)
+      ) {
         setShowQuickAdd(false);
       }
     },
@@ -148,7 +157,8 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const fav = product ? inWishlist(product._id) : false;
 
   function buildCustomSizeObject() {
-    if (!customBust && !customWaist && !customHips && !customShoulder) return null;
+    if (!customBust && !customWaist && !customHips && !customShoulder)
+      return null;
     return {
       bust: customBust ? String(customBust).trim() : "",
       waist: customWaist ? String(customWaist).trim() : "",
@@ -184,7 +194,11 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       qty: 1,
       customSize,
       extra,
-      lining: product.hasLiningOption ? (String(lining || "").toLowerCase() === "with" ? "with" : "without") : null,
+      lining: product.hasLiningOption
+        ? String(lining || "").toLowerCase() === "with"
+          ? "with"
+          : "without"
+        : null,
     });
     openMiniCart?.();
     setShowQuickAdd(false);
@@ -193,17 +207,37 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
   const computeQuickAddPosition = () => {
     try {
       const rect = wrapperRef.current?.getBoundingClientRect();
-      if (!rect) return { right: "0.5rem", left: "auto" };
-      if (window.innerWidth - rect.right < 380) {
-        return { right: "auto", left: "-18rem" };
+      if (!rect) return { top: "0.5rem", right: "0.5rem" };
+
+      const popupWidth = 280; // width of popup
+      const spaceRight = window.innerWidth - rect.right;
+      const spaceLeft = rect.left;
+
+      // if enough space on the right → open from top-right of product card
+      if (spaceRight > popupWidth + 20) {
+        return { top: "0", right: "0" };
       }
-      return { right: "0.5rem", left: "auto" };
+
+      // if not enough space on the right → open from top-left corner of that card
+      if (spaceLeft > popupWidth + 20) {
+        return { top: "0", left: "0" };
+      }
+
+      // fallback for small screens → open just below card (centered)
+      return {
+        top: "100%",
+        left: "50%",
+        transform: "translateX(-50%)",
+        marginTop: "0.5rem",
+      };
     } catch {
-      return { right: "0.5rem", left: "auto" };
+      return { top: "0", right: "0" };
     }
   };
 
-  const quickAddAria = showQuickAdd ? { role: "dialog", "aria-modal": "true" } : {};
+  const quickAddAria = showQuickAdd
+    ? { role: "dialog", "aria-modal": "true" }
+    : {};
 
   return (
     <Link
@@ -256,7 +290,9 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
           </button>
 
           <button
-            className={`p-2 rounded-full shadow hover:scale-110 transition-transform ${fav ? "bg-red-500 text-white" : "bg-white"}`}
+            className={`p-2 rounded-full shadow hover:scale-110 transition-transform ${
+              fav ? "bg-red-500 text-white" : "bg-white"
+            }`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -276,7 +312,9 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
       </motion.div>
 
       <div className="text-center mt-3">
-        <h3 className="font-semibold text-2xl text-gray-800 line-clamp-1">{product?.name}</h3>
+        <h3 className="font-semibold text-2xl text-gray-800 line-clamp-1">
+          {product?.name}
+        </h3>
         <p className="text-gray-600 text-lg font-semibold">
           ₹{Number(product?.price || 0).toLocaleString("en-IN")}
         </p>
@@ -286,8 +324,8 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
         <div
           ref={quickAddRef}
           {...quickAddAria}
-          style={computeQuickAddPosition()}
-          className="absolute top-0 w-72 md:w-80 bg-white shadow-xl rounded p-4 z-50"
+          className="absolute top-2 right-2 w-64 sm:w-72 bg-white shadow-xl rounded-xl p-4 z-50 border border-gray-100 
+               transition-all duration-300"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -305,7 +343,9 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
               </div>
               <div>
                 <div className="font-medium">{product?.name}</div>
-                <div className="text-sm text-amber-700 font-semibold">₹{getUnitPrice()}</div>
+                <div className="text-sm text-amber-700 font-semibold">
+                  ₹{getUnitPrice()}
+                </div>
               </div>
             </div>
 
@@ -333,7 +373,9 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
                     ev.stopPropagation();
                     setLining("without");
                   }}
-                  className={`px-3 py-1 rounded-md border text-sm ${lining === "without" ? "bg-black text-white" : "bg-white"}`}
+                  className={`px-3 py-1 rounded-md border text-sm ${
+                    lining === "without" ? "bg-black text-white" : "bg-white"
+                  }`}
                   type="button"
                 >
                   Without lining (₹{Number(product.price)})
@@ -344,13 +386,17 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
                     ev.stopPropagation();
                     setLining("with");
                   }}
-                  className={`px-3 py-1 rounded-md border text-sm ${lining === "with" ? "bg-black text-white" : "bg-white"}`}
+                  className={`px-3 py-1 rounded-md border text-sm ${
+                    lining === "with" ? "bg-black text-white" : "bg-white"
+                  }`}
                   type="button"
                 >
                   With lining (₹{Number(product.liningPrice)})
                 </button>
               </div>
-              <div className="text-xs text-gray-500 mt-1">Choose lining option. Price updates above.</div>
+              <div className="text-xs text-gray-500 mt-1">
+                Choose lining option. Price updates above.
+              </div>
             </div>
           )}
 
@@ -366,7 +412,9 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
                     setSelectedSize(s);
                   }}
                   className={`border rounded-md py-1 px-2 text-sm transition-all ${
-                    selectedSize === s ? "bg-black text-white border-black" : "border-gray-300 text-gray-700 hover:border-black"
+                    selectedSize === s
+                      ? "bg-black text-white border-black"
+                      : "border-gray-300 text-gray-700 hover:border-black"
                   }`}
                 >
                   {s}
@@ -374,25 +422,67 @@ export default function ProductCard({ product, onSearch, size = "md" }) {
               ))}
             </div>
             <div className="text-xs text-gray-500 mt-2">
-              Note: Sizes <strong>XL and above</strong> include a ₹{EXTRA_FOR_LARGE} surcharge.
+              Note: Sizes <strong>XL and above</strong> include a ₹
+              {EXTRA_FOR_LARGE} surcharge.
             </div>
           </div>
 
           {showCustomInputs && (
             <div className="mb-3 space-y-2">
-              <p className="text-sm font-semibold">Custom measurements (in inches)</p>
+              <p className="text-sm font-semibold">
+                Custom measurements (in inches)
+              </p>
               <div className="grid grid-cols-2 gap-2">
-                <input type="text" value={customBust} onChange={(e) => setCustomBust(e.target.value)} placeholder="Bust" className="border rounded px-2 py-1 text-sm" />
-                <input type="text" value={customWaist} onChange={(e) => setCustomWaist(e.target.value)} placeholder="Waist" className="border rounded px-2 py-1 text-sm" />
-                <input type="text" value={customHips} onChange={(e) => setCustomHips(e.target.value)} placeholder="Hips" className="border rounded px-2 py-1 text-sm" />
-                <input type="text" value={customShoulder} onChange={(e) => setCustomShoulder(e.target.value)} placeholder="Shoulder" className="border rounded px-2 py-1 text-sm" />
+                <input
+                  type="text"
+                  value={customBust}
+                  onChange={(e) => setCustomBust(e.target.value)}
+                  placeholder="Bust"
+                  className="border rounded px-2 py-1 text-sm"
+                />
+                <input
+                  type="text"
+                  value={customWaist}
+                  onChange={(e) => setCustomWaist(e.target.value)}
+                  placeholder="Waist"
+                  className="border rounded px-2 py-1 text-sm"
+                />
+                <input
+                  type="text"
+                  value={customHips}
+                  onChange={(e) => setCustomHips(e.target.value)}
+                  placeholder="Hips"
+                  className="border rounded px-2 py-1 text-sm"
+                />
+                <input
+                  type="text"
+                  value={customShoulder}
+                  onChange={(e) => setCustomShoulder(e.target.value)}
+                  placeholder="Shoulder"
+                  className="border rounded px-2 py-1 text-sm"
+                />
               </div>
             </div>
           )}
 
           <div className="flex gap-2">
-            <button onClick={handleAddFromQuick} className="flex-1 bg-black text-white py-2 rounded" aria-label="Add to bag">Add</button>
-            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowQuickAdd(false); }} className="flex-1 border border-gray-400 py-2 rounded">Cancel</button>
+            <button
+              onClick={handleAddFromQuick}
+              className="flex-1 bg-black text-white py-2 rounded"
+              aria-label="Add to bag"
+            >
+              Add
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowQuickAdd(false);
+              }}
+              className="flex-1 border border-gray-400 py-2 rounded"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
